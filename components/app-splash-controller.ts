@@ -1,12 +1,14 @@
-import { SplashScreen } from 'expo-router'
-import { useAuth } from '@/components/auth/auth-provider'
+import { SplashScreen } from 'expo-router';
+import { useEffect } from 'react';
 
 export function AppSplashController() {
-  const { isLoading } = useAuth()
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync();
+    }, 3000);
 
-  if (!isLoading) {
-    SplashScreen.hideAsync()
-  }
+    return () => clearTimeout(timer);
+  }, []);
 
-  return null
+  return null;
 }

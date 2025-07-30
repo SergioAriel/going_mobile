@@ -1,15 +1,22 @@
 import { router } from 'expo-router'
-import { useAuth } from '@/components/auth/auth-provider'
+import { useLogin } from '@privy-io/expo/ui'
 import { AppText } from '@/components/app-text'
 import { AppView } from '@/components/app-view'
 import { AppConfig } from '@/constants/app-config'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ActivityIndicator, View } from 'react-native'
+import { ActivityIndicator, Button, View } from 'react-native'
 import { Image } from 'expo-image'
-import { Button } from '@react-navigation/elements'
+
 
 export default function SignIn() {
-  const { signIn, isLoading } = useAuth()
+  const { login, isLoading } = useLogin({
+    onSuccess: () => {  
+      router.push('/(profile)/AccountTab')
+    },
+    onError: (error: any) => {
+      console.error('Login failed:', error)
+    },
+  })
   return (
     <AppView
       style={{
@@ -18,37 +25,26 @@ export default function SignIn() {
         alignItems: 'stretch',
       }}
     >
-      {isLoading ? (
-        <ActivityIndicator />
-      ) : (
-        <SafeAreaView
-          style={{
-            flex: 1,
-            justifyContent: 'space-between',
-          }}
-        >
-          {/* Dummy view to push the next view to the center. */}
-          <View />
-          <View style={{ alignItems: 'center', gap: 16 }}>
-            <AppText type="title">{AppConfig.name}</AppText>
-            <Image source={require('../assets/images/icon.png')} style={{ width: 128, height: 128 }} />
-          </View>
-          <View style={{ marginBottom: 16 }}>
-            <Button
-              variant="filled"
-              style={{ marginHorizontal: 16 }}
-              onPress={async () => {
-                await signIn()
-                // Navigate after signing in. You may want to tweak this to ensure sign-in is
-                // successful before navigating.
-                router.replace('/')
-              }}
-            >
-              Connect
-            </Button>
-          </View>
-        </SafeAreaView>
-      )}
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: 'space-between',
+        }}
+      >
+        {/* Dummy view to push the next view to the center. */}
+        <View />
+        <View style={{ alignItems: 'center', gap: 16 }}>
+          <AppText type="title">{AppConfig.name}</AppText>
+          <Image source={require('../assets/images/icon.png')} style={{ width: 128, height: 128 }} />
+        </View>
+        <View style={{ marginBottom: 16 }}>
+          <Button
+            title="Connect"
+            onPress={login}
+            color="#007AFF"
+          />
+        </View>
+      </SafeAreaView>
     </AppView>
   )
 }
