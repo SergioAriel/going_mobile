@@ -1,2 +1,3 @@
 import './polyfill'
-import 'expo-router/entry'
+import './global.css';
+import { App } from 'expo-router/entry';

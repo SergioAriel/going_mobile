@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Button, FlatList, TouchableOpacity } from 'react-native';
 import { useUser } from "@/context/UserContext";
 import { Product } from "@/interfaces";
 import { getProducts } from "@/lib/ServerActions/products";
@@ -24,22 +23,28 @@ export default function SellingTab() {
 
     if (!userData.isSeller) {
         return (
-            <View style={styles.container}>
-                <Text>To become a seller, please add an address.</Text>
-                <Button title="Add Address" onPress={() => navigation.push('/ProfileScreen')} />
+            <View className="flex-1 justify-center items-center p-5">
+                <Text className="text-center mb-4">To become a seller, please add an address.</Text>
+                <TouchableOpacity className="bg-blue-500 p-3 rounded-md" onPress={() => navigation.push('/profile')}>
+                    <Text className="text-white font-bold">Add Address</Text>
+                </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <Link href="/UploadProductScreen" asChild><Button title="+ Add New Product" /></Link>
+        <View className="flex-1 p-5 bg-gray-100">
+            <Link href="/uploadProduct" asChild>
+                <TouchableOpacity className="bg-blue-500 p-3 rounded-md mb-5">
+                    <Text className="text-white text-center font-bold">+ Add New Product</Text>
+                </TouchableOpacity>
+            </Link>
             <FlatList
                 data={userProducts}
                 keyExtractor={(item) => item._id.toString()}
                 renderItem={({ item }) => (
-                    <View style={styles.productContainer}>
-                        <Text style={styles.productName}>{item.name}</Text>
+                    <View className="p-4 bg-white rounded-lg shadow-md mb-3 flex-row justify-between">
+                        <Text className="font-bold">{item.name}</Text>
                         <Text>${item.price}</Text>
                     </View>
                 )}
@@ -47,20 +52,3 @@ export default function SellingTab() {
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-    },
-    productContainer: {
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    productName: {
-        fontWeight: 'bold',
-    },
-});

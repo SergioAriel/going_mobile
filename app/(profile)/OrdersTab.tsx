@@ -1,42 +1,43 @@
-
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, Modal, FlatList } from 'react-native';
+import { View, Text, Button, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { Order } from "@/interfaces";
-import { getOrders, updateOrder } from "@/lib/ServerActions/orders";
+import { 
+  // getOrders, 
+  updateOrder } from "@/lib/ServerActions/orders";
 import { useUser } from "@/context/UserContext";
-import { useSolanaWallets } from "@privy-io/expo";
+// import { useSolanaWallets } from "@privy-io/expo";
 import { OrderCard } from "@/components/orders/OrderCard";
 import QRCode from 'react-native-qrcode-svg';
 import { Camera } from 'expo-camera';
 
-export default function OrdersTab() {
+export default function OrdersTab () {
   const { userData } = useUser();
   const [ordersBuyer, setOrderBuyer] = useState<Order[]>([]);
   const [ordersSeller, setOrderSeller] = useState<Order[]>([]);
-  const { wallets } = useSolanaWallets();
+  // const { wallets } = useSolanaWallet();
   const [showQR, setShowQR] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState<boolean>(false);
 
-  useEffect(() => {
-    (async () => {
-      if (userData?._id) {
-        const resOrdersBuyer = await getOrders({ sellers: userData._id.toString() });
-        setOrderSeller(resOrdersBuyer);
-      }
+  // useEffect(() => {
+  //   (async () => {
+  //     if (userData?._id) {
+  //       const resOrdersBuyer = await getOrders({ sellers: userData._id.toString() });
+  //       setOrderSeller(resOrdersBuyer);
+  //     }
 
-      const connectedWallets = wallets.map(wallet => wallet?.address.toString());
-      if (connectedWallets.length > 0 || userData?._id) {
-        const query = {
-          $or: [
-            { 'buyer.walletAddress': { $in: connectedWallets } },
-            { 'buyer._id': userData?._id.toString() }
-          ]
-        };
-        const resOrdersSeller = await getOrders(query as any);
-        setOrderBuyer(resOrdersSeller);
-      }
-    })();
-  }, [userData, wallets]);
+  //     const connectedWallets = wallets.map(wallet => wallet?.address.toString());
+  //     if (connectedWallets.length > 0 || userData?._id) {
+  //       const query = {
+  //         $or: [
+  //           { 'buyer.walletAddress': { $in: connectedWallets } },
+  //           { 'buyer._id': userData?._id.toString() }
+  //         ]
+  //       };
+  //       const resOrdersSeller = await getOrders(query as any);
+  //       setOrderBuyer(resOrdersSeller);
+  //     }
+  //   })();
+  // }, [userData, wallets]);
 
   const handleShowQR = (orderId: string) => {
     setShowQR(orderId);
@@ -57,23 +58,29 @@ export default function OrdersTab() {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 p-5 bg-gray-100">
       {showQR && (
-        <Modal visible={true} onRequestClose={() => setShowQR(null)}>
-            <View style={styles.qrContainer}>
-                <QRCode value={showQR} size={256} />
-                <Button title="Close" onPress={() => setShowQR(null)} />
+        <Modal visible={true} onRequestClose={() => setShowQR(null)} transparent={true} animationType="slide">
+            <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+                <View className="bg-white p-5 rounded-lg items-center">
+                    <QRCode value={showQR} size={256} />
+                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowQR(null)}>
+                        <Text className="text-white text-center font-bold">Close</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </Modal>
       )}
       {showScanner && (
         <Modal visible={true} onRequestClose={() => setShowScanner(false)}>
-            <Camera style={StyleSheet.absoluteFillObject} onBarCodeScanned={handleScanSuccess} />
-            <Button title="Close" onPress={() => setShowScanner(false)} />
+            {/* <Camera style={{...StyleSheet.absoluteFillObject}} onBarCodeScanned={handleScanSuccess} /> */}
+            <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowScanner(false)}>
+                <Text className="text-white text-center font-bold">Close</Text>
+            </TouchableOpacity>
         </Modal>
       )}
       <View>
-          <Text style={styles.title}>My Purchase Orders</Text>
+          <Text className="text-xl font-bold mb-3">My Purchase Orders</Text>
           <FlatList
             data={ordersBuyer}
             keyExtractor={(item) => item._id.toString()}
@@ -81,9 +88,11 @@ export default function OrdersTab() {
           />
       </View>
       {userData?.isSeller && (
-          <View>
-              <Text style={styles.title}>My Sales Orders</Text>
-              <Button title="Scan QR" onPress={() => setShowScanner(true)} />
+          <View className="mt-5">
+              <Text className="text-xl font-bold mb-3">My Sales Orders</Text>
+              <TouchableOpacity className="bg-blue-500 p-3 rounded-md mb-3" onPress={() => setShowScanner(true)}>
+                  <Text className="text-white text-center font-bold">Scan QR</Text>
+              </TouchableOpacity>
               <FlatList
                 data={ordersSeller}
                 keyExtractor={(item) => item._id.toString()}
@@ -94,20 +103,3 @@ export default function OrdersTab() {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    qrContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-});

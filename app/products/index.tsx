@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Button, Modal, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Button, Modal } from 'react-native';
 import { getProducts } from '@/lib/ServerActions/products';
 import { Product } from '@/interfaces';
-import { Link } from 'expo-router';
+import ProductCard from '@/components/products/ProductCard';
 
 const categories = [
     { name: "All", value: "all" },
@@ -56,7 +56,7 @@ const ProductsScreen = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -64,22 +64,24 @@ const ProductsScreen = () => {
 
   if (error) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>{error}</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-        <View style={{ padding: 10, flexDirection: 'row' }}>
+    <View style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
+        <View style={{ padding: 10, flexDirection: 'row', backgroundColor: 'white' }}>
             <TextInput
-                style={{ flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 5, padding: 10 }}
+                style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 10 }}
                 placeholder="Search products..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
             />
-            <Button title="Filters" onPress={() => setModalVisible(true)} />
+            <TouchableOpacity style={{ backgroundColor: '#3b82f6', padding: 10, borderRadius: 8, marginLeft: 10, justifyContent: 'center' }} onPress={() => setModalVisible(true)}>
+                <Text style={{ color: 'white' }}>Filters</Text>
+            </TouchableOpacity>
         </View>
         <Modal
             animationType="slide"
@@ -89,21 +91,23 @@ const ProductsScreen = () => {
                 setModalVisible(!modalVisible);
             }}
         >
-            <View style={styles.centeredView}>
-                <View style={styles.modalView}>
-                    <Text style={styles.modalText}>Categories</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <View style={{ margin: 20, backgroundColor: 'white', borderRadius: 20, padding: 35, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 }}>
+                    <Text style={{ marginBottom: 15, textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Categories</Text>
                     {categories.map(({ name, value }) => (
-                        <TouchableOpacity key={value} onPress={() => setSelectedCategory(value)}>
-                            <Text style={selectedCategory === value ? styles.selected : {}}>{name}</Text>
+                        <TouchableOpacity key={value} onPress={() => setSelectedCategory(value)} style={{ padding: 10 }}>
+                            <Text style={{ color: selectedCategory === value ? '#3b82f6' : 'black', fontWeight: selectedCategory === value ? 'bold' : 'normal' }}>{name}</Text>
                         </TouchableOpacity>
                     ))}
-                    <Text style={styles.modalText}>Sort by</Text>
+                    <Text style={{ marginTop: 20, marginBottom: 15, textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>Sort by</Text>
                     {sortOptions.map(({ name, value }) => (
-                        <TouchableOpacity key={value} onPress={() => setSortBy(value)}>
-                            <Text style={sortBy === value ? styles.selected : {}}>{name}</Text>
+                        <TouchableOpacity key={value} onPress={() => setSortBy(value)} style={{ padding: 10 }}>
+                            <Text style={{ color: sortBy === value ? '#3b82f6' : 'black', fontWeight: sortBy === value ? 'bold' : 'normal' }}>{name}</Text>
                         </TouchableOpacity>
                     ))}
-                    <Button title="Close" onPress={() => setModalVisible(false)} />
+                    <TouchableOpacity style={{ backgroundColor: '#3b82f6', borderRadius: 20, padding: 10, elevation: 2, marginTop: 20 }} onPress={() => setModalVisible(false)}>
+                        <Text style={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>Close</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </Modal>
@@ -111,51 +115,15 @@ const ProductsScreen = () => {
             data={products}
             keyExtractor={(item) => item._id.toString()}
             renderItem={({ item }) => (
-                <Link href={{ pathname: "/ProductDetailScreen", params: { productId: item._id.toString() } }} asChild>
-                    <TouchableOpacity>
-                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-                            <Text>{item.name}</Text>
-                            <Text>{item.price}</Text>
-                        </View>
-                    </TouchableOpacity>
-                </Link>
+                <View style={{ flex: 1, margin: 5 }}>
+                    <ProductCard product={item} />
+                </View>
             )}
+            numColumns={2}
+            contentContainerStyle={{ padding: 5 }}
         />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-    centeredView: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 22
-    },
-    modalView: {
-        margin: 20,
-        backgroundColor: "white",
-        borderRadius: 20,
-        padding: 35,
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5
-    },
-    modalText: {
-        marginBottom: 15,
-        textAlign: "center",
-        fontWeight: 'bold'
-    },
-    selected: {
-        fontWeight: 'bold',
-        color: 'blue'
-    }
-});
 
 export default ProductsScreen;

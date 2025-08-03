@@ -1,120 +1,186 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const slides = [
   {
     id: "welcome",
-    image: require('../../assets/images/adaptive-icon.png'), // Corrected path
     title: 'Welcome to Going',
-    subtitle: 'Your marketplace with cryptocurrency payments'
+    subtitle: 'Your marketplace with cryptocurrency payments',
+    buttons: [
+      { text: 'Explore Products', href: '/products', style: 'primary' },
+      { text: 'Browse Categories', href: '/categories', style: 'secondary' },
+    ],
   },
   {
     id: "shoppingExperience",
-    image: require('../../assets/images/adaptive-icon.png'), // Corrected path
     title: 'Buy and sell easily',
-    subtitle: 'With the security of the Solana blockchain'
+    subtitle: 'With the security of the Solana blockchain',
   },
   {
     id: "cryptoPayments",
-    image: require('../../assets/images/adaptive-icon.png'), // Corrected path
     title: 'Instant payments',
-    subtitle: "Directly to the seller's wallet"
+    subtitle: 'Directly to the seller\'s wallet',
   }
 ];
 
-const { width: screenWidth } = Dimensions.get('window');
-
 const HeroSlider = () => {
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const scrollViewRef = useRef<ScrollView>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const opacity = useSharedValue(1);
+  const scale = useSharedValue(1);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const nextSlide = (currentSlide + 1) % slides.length;
-            scrollViewRef.current?.scrollTo({ x: nextSlide * screenWidth, animated: true });
-            setCurrentSlide(nextSlide);
-        }, 5000);
+  const slideInterval = useRef<NodeJS.Timeout | null>(null);
 
-        return () => clearInterval(interval);
-    }, [currentSlide]);
-
-    const onScroll = (event: any) => {
-        const slide = Math.ceil(event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width);
-        if (slide !== currentSlide) {
-            setCurrentSlide(slide);
-        }
+  useEffect(() => {
+    startSlideShow();
+    return () => {
+      if (slideInterval.current) {
+        clearInterval(slideInterval.current);
+      }
     };
+  }, []);
 
-    return (
-        <View style={styles.container}>
-            <ScrollView
-                ref={scrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={onScroll}
-                scrollEventThrottle={16}
-            >
-                {slides.map((slide, index) => (
-                    <ImageBackground key={index} source={slide.image} style={styles.slide}>
-                        <View style={styles.overlay}>
-                            <Text style={styles.title}>{slide.title}</Text>
-                            <Text style={styles.subtitle}>{slide.subtitle}</Text>
-                        </View>
-                    </ImageBackground>
-                ))}
-            </ScrollView>
-            <View style={styles.dotsContainer}>
-                {slides.map((_, index) => (
-                    <View key={index} style={[styles.dot, currentSlide === index ? styles.activeDot : {}]} />
-                ))}
-            </View>
-        </View>
-    );
+  const startSlideShow = () => {
+    slideInterval.current = setInterval(() => {
+      changeSlide(1);
+    }, 5000);
+  };
+
+  const changeSlide = (direction: number) => {
+    opacity.value = withTiming(0, { duration: 500, easing: Easing.ease });
+    scale.value = withTiming(1.05, { duration: 500, easing: Easing.ease });
+
+    setTimeout(() => {
+      setCurrentSlide(prev => (prev + direction + slides.length) % slides.length);
+      opacity.value = withTiming(1, { duration: 500, easing: Easing.ease });
+      scale.value = withTiming(1, { duration: 500, easing: Easing.ease });
+    }, 500);
+  };
+
+  const goToSlide = (index: number) => {
+    if (slideInterval.current) {
+      clearInterval(slideInterval.current);
+    }
+    changeSlide(index - currentSlide);
+    startSlideShow();
+  };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  const slide = slides[currentSlide];
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['rgba(20, 191, 251, 0.7)', 'rgba(211, 0, 229, 0.7)']}
+        style={styles.gradient}
+      />
+      <Animated.View style={[styles.slide, animatedStyle]}>
+        <Text style={styles.title}>
+          <Text style={styles.titleBrand}>Going</Text> Marketplace
+        </Text>
+        <Text style={styles.subtitle}>{slide.subtitle}</Text>
+        {slide.buttons && (
+          <View style={styles.buttonContainer}>
+            {slide.buttons.map((button, index) => (
+              <TouchableOpacity key={index} style={[styles.button, button.style === 'primary' ? styles.btnPrimary : styles.btnSecondary]}>
+                <Text style={styles.buttonText}>{button.text}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </Animated.View>
+
+      <View style={styles.dotContainer}>
+        {slides.map((_, index) => (
+          <TouchableOpacity key={index} onPress={() => goToSlide(index)}>
+            <View style={[styles.dot, currentSlide === index && styles.dotActive]} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        height: 200,
-    },
-    imageBackground: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    overlay: {
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 20,
-        borderRadius: 10,
-    },
-    title: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    subtitle: {
-        color: '#fff',
-        fontSize: 16,
-        textAlign: 'center',
-    },
-    dotsContainer: {
-        flexDirection: 'row',
-        position: 'absolute',
-        bottom: 10,
-        alignSelf: 'center',
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#ccc',
-        margin: 3,
-    },
-    activeDot: {
-        backgroundColor: '#fff',
-    },
+  container: {
+    width: width,
+    height: 600,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  gradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  slide: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  titleBrand: {
+    // This is a trick to simulate gradient text, not perfect
+    color: '#14BFFB', 
+  },
+  subtitle: {
+    fontSize: 22,
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 32,
+    maxWidth: '80%',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  btnPrimary: {
+    backgroundColor: '#14BFFB',
+  },
+  btnSecondary: {
+    backgroundColor: '#D300E5',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dotContainer: {
+    position: 'absolute',
+    bottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 6,
+  },
+  dotActive: {
+    backgroundColor: 'white',
+    width: 24,
+  },
 });
 
 export default HeroSlider;

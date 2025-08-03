@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
+import { View, Text, Button, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Order } from '@/interfaces';
 import { getOrder, updateOrder } from '@/lib/ServerActions/orders';
@@ -55,19 +55,21 @@ const OrderScreen = () => {
     };
 
     if (loading) {
-        return <View style={styles.container}><Text>Loading order details...</Text></View>;
+        return <View className="flex-1 justify-center items-center"><Text>Loading order details...</Text></View>;
     }
 
     if (!order) {
-        return <View style={styles.container}><Text>Order not found.</Text></View>;
+        return <View className="flex-1 justify-center items-center"><Text>Order not found.</Text></View>;
     }
 
     return (
-        <View style={styles.container}>
+        <View className="flex-1 p-5 bg-gray-100">
             {showSellerQR && (
-                <View style={styles.qrContainer}>
+                <View className="flex-1 items-center justify-center">
                     <QRCode value={order._id.toString()} size={256} />
-                    <Button title="Close" onPress={() => setShowSellerQR(false)} />
+                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowSellerQR(false)}>
+                        <Text className="text-white text-center font-bold">Close</Text>
+                    </TouchableOpacity>
                 </View>
             )}
             {showScanner ? (
@@ -77,12 +79,12 @@ const OrderScreen = () => {
                 />
             ) : (
                 <View>
-                    <Text style={styles.title}>Order Details</Text>
+                    <Text className="text-2xl font-bold mb-5">Order Details</Text>
                     <Text>Order ID: {order._id}</Text>
                     <Text>Status: {order.status}</Text>
                     {deliveryLocation && (
                         <MapView
-                            style={styles.map}
+                            style={{ width: '100%', height: 200, marginVertical: 20 }}
                             initialRegion={{
                                 latitude: deliveryLocation.lat,
                                 longitude: deliveryLocation.lng,
@@ -99,34 +101,16 @@ const OrderScreen = () => {
                             />
                         </MapView>
                     )}
-                    <Button title="Generate Pickup QR" onPress={() => setShowSellerQR(true)} />
-                    <Button title="Scan to Confirm Delivery" onPress={() => setShowScanner(true)} />
+                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowSellerQR(true)}>
+                        <Text className="text-white text-center font-bold">Generate Pickup QR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowScanner(true)}>
+                        <Text className="text-white text-center font-bold">Scan to Confirm Delivery</Text>
+                    </TouchableOpacity>
                 </View>
             )}
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    qrContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    map: {
-        width: '100%',
-        height: 200,
-        marginVertical: 20,
-    },
-});
 
 export default OrderScreen;

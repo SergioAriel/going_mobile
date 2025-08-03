@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { View, Text, FlatList, Image, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const categories = [
     {
@@ -35,51 +36,24 @@ const categories = [
     },
   ];
 
-const CategoriesScreen = () => (
-  <FlatList
-    data={categories}
-    keyExtractor={(item) => item.id.toString()}
-    renderItem={({ item }) => (
-        <View style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.image} />
-            <View style={styles.overlay}>
-                <Text style={styles.name}>{item.icon} {item.name}</Text>
-                <Text style={styles.description}>{item.description}</Text>
-            </View>
-        </View>
-    )}
-  />
-);
+const CategoriesScreen = () => {
+    const router = useRouter();
 
-const styles = StyleSheet.create({
-    card: {
-        margin: 10,
-        borderRadius: 10,
-        overflow: 'hidden',
-        elevation: 5,
-        backgroundColor: '#fff'
-    },
-    image: {
-        width: '100%',
-        height: 200,
-    },
-    overlay: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 10,
-    },
-    name: {
-        color: '#fff',
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    description: {
-        color: '#fff',
-        fontSize: 14,
-    }
-});
+    return (
+        <FlatList
+            data={categories}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => router.push(`/products?category=${item.slug}`)} className="m-2 rounded-lg overflow-hidden shadow-lg bg-white">
+                    <Image source={{ uri: item.image }} className="w-full h-48" />
+                    <View className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-4">
+                        <Text className="text-white text-xl font-bold">{item.icon} {item.name}</Text>
+                        <Text className="text-white text-sm">{item.description}</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
+        />
+    );
+}
 
 export default CategoriesScreen;

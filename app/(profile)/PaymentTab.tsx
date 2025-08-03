@@ -4,8 +4,8 @@ import { View, Text } from 'react-native';
 
 export default function PaymentTab() {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Payment Tab</Text>
+    <View className="flex-1 items-center justify-center">
+      <Text className="text-lg">Payment Tab</Text>
     </View>
   );
 }

@@ -19,7 +19,7 @@ export function useGetBalance({ address }: { address: PublicKey }) {
 export function useGetBalanceInvalidate({ address }: { address: PublicKey }) {
   const connection = useConnection()
   const queryKey = useGetBalanceQueryKey({ address, endpoint: connection.rpcEndpoint })
-  const client = useQueryClient()
+  const client = useQueryClient() || ""
 
   return () => client.invalidateQueries({ queryKey })
 }

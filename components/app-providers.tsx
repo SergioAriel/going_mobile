@@ -3,33 +3,39 @@ import { PropsWithChildren } from 'react';
 import { ClusterProvider } from './cluster/cluster-provider';
 import { SolanaProvider } from '@/components/solana/solana-provider';
 import { AppTheme } from '@/components/app-theme';
-import { AuthProvider } from '@/components/auth/auth-provider';
 import { PrivyProvider } from '@privy-io/expo';
-import { AlertProvider } from '../context/AlertContext';
-import { UserProvider } from '../context/UserContext';
-import { CurrenciesProvider } from '../context/CurrenciesContext';
-import { CartProvider } from '../context/CartContext';
+import { UserProvider, CurrenciesProvider, AlertProvider, CartProvider } from '@/context';
+import { router } from 'expo-router';
 
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: PropsWithChildren) {
+
+  console.log(process.env.EXPO_PUBLIC_PRIVY_APP_ID, process.env.EXPO_PUBLIC_PRIVY_CLIENT);
   return (
     <AppTheme>
       <QueryClientProvider client={queryClient}>
         <ClusterProvider>
           <SolanaProvider>
-            <PrivyProvider appId="cm98xfs1400p8jr0ko4qbl24q">
-                <UserProvider>
-                  <CurrenciesProvider>
-                    <AlertProvider>
-                      <CartProvider>{children}</CartProvider>
-                    </AlertProvider>
-                  </CurrenciesProvider>
-                </UserProvider>
-              </PrivyProvider>
+            <PrivyProvider
+              appId={process.env.EXPO_PUBLIC_PRIVY_APP_ID as string}
+              clientId={process.env.EXPO_PUBLIC_PRIVY_CLIENT as string}
+              
+            >
+              <UserProvider>
+                <CurrenciesProvider>
+                  <AlertProvider>
+                    <CartProvider>
+                      {children}
+                    </CartProvider>
+                  </AlertProvider>
+                </CurrenciesProvider>
+              </UserProvider>
+            </PrivyProvider>
           </SolanaProvider>
         </ClusterProvider>
       </QueryClientProvider>
+              
     </AppTheme>
   );
 }

@@ -1,7 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getCurrencies } from "@/lib/ServerActions/cryptocurrencies";
 import { Currency } from "@/interfaces";
-
 
 interface CurrenciesContextType {
 	listCryptoCurrencies: Currency[];
@@ -22,12 +20,17 @@ export const CurrenciesProvider = ({ children }: { children: React.ReactNode }) 
 
 	useEffect(() => {
 		(async () => {
-			const currencies:Currency[] = await getCurrencies();
-			setCurrencies(currencies);
-			setUserCurrency({
-				currency: 'USD',
-				price: currencies.find((currency: Currency) => currency.symbol === 'USD')?.price || 0
-			});
+			try {
+				const response = await fetch('http://192.168.0.196:3000/api/cryptocurrencies');
+				const currencies:Currency[] = await response.json();
+				setCurrencies(currencies);
+				setUserCurrency({
+					currency: 'USD',
+					price: currencies.find((currency: Currency) => currency.symbol === 'USD')?.price || 0
+				});
+			} catch (error) {
+				console.error("Failed to fetch currencies:", error);
+			}
 		})()
 	}, []);
 
@@ -38,10 +41,12 @@ export const CurrenciesProvider = ({ children }: { children: React.ReactNode }) 
 	);
 }
 
-export const useCurrencies = () => {
+export const useCurrencies = () => {;
 	const context = useContext(CurrenciesContext);
 	if (!context) {
 		throw new Error("useCurrencies must be used within a CurrenciesProvider");
 	}
 	return context;
 }
+
+export default CurrenciesContext;

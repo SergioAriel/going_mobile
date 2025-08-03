@@ -47,7 +47,7 @@ export interface Order {
 }
 
 export interface AddressForm {
-  fullName: string;
+  name: string;
   street: string;
   city: string;
   state: string;

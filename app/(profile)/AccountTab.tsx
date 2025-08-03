@@ -1,82 +1,45 @@
-
 import React from 'react';
-import { View, TextInput, Button, StyleSheet, ScrollView } from 'react-native';
+import { View, TextInput, Button, ScrollView, TouchableOpacity, Text } from 'react-native';
 import { useUser } from '@/context/UserContext';
-// import * as ImagePicker from 'expo-image-picker';
 
 export default function AccountTab() {
     const { userData, setUserData } = useUser();
 
-    // const pickImage = async () => {
-    //     // let result = await ImagePicker.launchImageLibraryAsync({
-    //     //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    //     //     allowsEditing: true,
-    //     //     aspect: [1, 1],
-    //     //     quality: 1,
-    //     // });
-
-    //     if (!result.canceled) {
-    //         setUserData(prev => ({ ...prev, avatar: result.assets[0].uri }));
-    //     }
-    // };
-
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.avatarContainer}>
-                {/* <TouchableOpacity onPress={pickImage}>
-                    <Image source={{ uri: userData.avatar || undefined }} style={styles.avatar} />
-                </TouchableOpacity> */}
+        <ScrollView className="flex-1 p-5 bg-gray-100">
+            <View className="items-center mb-5">
+                {/* Avatar placeholder */}
+                <View className="w-24 h-24 rounded-full bg-gray-300" />
             </View>
             <TextInput
-                style={styles.input}
+                className="border border-gray-300 rounded-md p-3 mb-3 bg-white"
                 value={userData.name}
                 onChangeText={(text) => setUserData(prev => ({ ...prev, name: text }))}
                 placeholder="Full Name"
             />
             <TextInput
-                style={styles.input}
+                className="border border-gray-300 rounded-md p-3 mb-3 bg-white"
                 value={userData.email}
                 onChangeText={(text) => setUserData(prev => ({ ...prev, email: text }))}
                 placeholder="Email Address"
                 keyboardType="email-address"
             />
             <TextInput
-                style={styles.input}
+                className="border border-gray-300 rounded-md p-3 mb-3 bg-white"
                 value={userData.location}
                 onChangeText={(text) => setUserData(prev => ({ ...prev, location: text }))}
                 placeholder="Location"
             />
             <TextInput
-                style={styles.input}
+                className="border border-gray-300 rounded-md p-3 mb-3 bg-white h-24"
                 value={userData.bio}
                 onChangeText={(text) => setUserData(prev => ({ ...prev, bio: text }))}
                 placeholder="Bio"
                 multiline
             />
-            <Button title="Save Changes" onPress={() => { /* Logic to save changes */ }} />
+            <TouchableOpacity className="bg-blue-500 p-3 rounded-md" onPress={() => { /* Logic to save changes */ }}>
+                <Text className="text-white text-center font-bold">Save Changes</Text>
+            </TouchableOpacity>
         </ScrollView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-    },
-    avatarContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 5,
-        padding: 10,
-        marginBottom: 10,
-    },
-});

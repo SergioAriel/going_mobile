@@ -15,7 +15,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
 
-  const { ready, authenticated, user } = usePrivy()
+  const { user } = usePrivy()
   const [userData, setUserData] = useState<User>({
     _id: "",
     name: "going",
@@ -42,7 +42,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     (async () => {
-      if (ready && authenticated && user) {
+      if ( user) {
         try {
           const resUserData = (await getUser(user?.id.toString()))
 
@@ -55,10 +55,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           }
           const defaultUserData: User = {
             _id: user.id,
-            name: user?.google?.name || "",
+            name: "",
             addresses: [],
             isSeller: false,
-            email: user?.google?.email || "",
+            email: "",
             avatar: "",
             joined: "",
             location: "",
@@ -85,7 +85,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     })();
-  }, [ready, authenticated, user]);
+  }, [user]);
 
   useEffect(() => {
     const loadTheme = async () => {

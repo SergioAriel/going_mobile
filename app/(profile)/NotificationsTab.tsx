@@ -4,8 +4,8 @@ import { View, Text } from 'react-native';
 
 export default function NotificationsTab() {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Notifications Tab</Text>
+    <View className="flex-1 items-center justify-center">
+      <Text className="text-lg">Notifications Tab</Text>
     </View>
   );
 }

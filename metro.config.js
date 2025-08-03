@@ -1,55 +1,60 @@
-const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
+const path = require('path');
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+let config = getDefaultConfig(__dirname);
 
-// --- START ROBUST CONFIGURATION ---
-
-// 1. Add the project's `node_modules` folder to the resolver.
+// 1. Agrega la carpeta `node_modules` del proyecto al resolver.
 config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, 'node_modules'),
 ];
 
-// 2. Explicitly resolve the problematic Solana dependency.
+// 2. Resuelve explícitamente la dependencia problemática de Solana.
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   util: require.resolve('util'),
   '@solana/codecs-numbers': path.resolve(__dirname, 'node_modules/@solana/codecs-numbers'),
 };
 
-// 3. Custom resolver to handle Privy's package exports and other incompatibilities.
+// 3. Solucionador personalizado para manejar las exportaciones de paquetes de Privy y otras incompatibilidades.
 const resolveRequestWithPackageExports = (context, moduleName, platform) => {
-  // Workaround for `isows` (a `viem` dependency)
+  // Las exportaciones de paquetes en `isows` (una dependencia de `viem`) son incompatibles, por lo que deben deshabilitarse
   if (moduleName === "isows") {
     const ctx = { ...context, unstable_enablePackageExports: false };
     return ctx.resolveRequest(ctx, moduleName, platform);
   }
 
-  // Workaround for `zustand@4`
+  // Las exportaciones de paquetes en `zustand@4` son incompatibles, por lo que deben deshabilitarse
   if (moduleName.startsWith("zustand")) {
     const ctx = { ...context, unstable_enablePackageExports: false };
     return ctx.resolveRequest(ctx, moduleName, platform);
   }
 
-  // Workaround for `jose`
+  // Las exportaciones de paquetes en `jose` son incompatibles, por lo que se utiliza la versión del navegador
   if (moduleName === "jose") {
     const ctx = { ...context, unstable_conditionNames: ["browser"] };
     return ctx.resolveRequest(ctx, moduleName, platform);
   }
 
-  // Enable package exports for Privy
-  if (moduleName.startsWith('@privy-io')) {
+  // El siguiente bloque solo es necesario si estás
+  // ejecutando React Native 0.78 *o anterior*.
+  if (moduleName.startsWith('@privy-io/')) {
     const ctx = { ...context, unstable_enablePackageExports: true };
     return ctx.resolveRequest(ctx, moduleName, platform);
   }
 
-  // Fallback to the default resolver
   return context.resolveRequest(context, moduleName, platform);
 };
 
 config.resolver.resolveRequest = resolveRequestWithPackageExports;
 
-// --- END ROBUST CONFIGURATION ---
+// SVG Transformer configuration
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve('react-native-svg-transformer'),
+};
+config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== 'svg');
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'svg'];
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });

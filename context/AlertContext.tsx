@@ -54,3 +54,5 @@ export const useAlert = () => {
     }
     return context;
 };
+
+export default AlertContext

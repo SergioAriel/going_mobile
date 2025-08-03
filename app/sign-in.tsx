@@ -6,17 +6,24 @@ import { AppConfig } from '@/constants/app-config'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ActivityIndicator, Button, View } from 'react-native'
 import { Image } from 'expo-image'
+import { usePrivy } from '@privy-io/expo'
 
 
 export default function SignIn() {
-  const { login, isLoading } = useLogin({
-    onSuccess: () => {  
-      router.push('/(profile)/AccountTab')
-    },
-    onError: (error: any) => {
-      console.error('Login failed:', error)
-    },
-  })
+  // Redirect to the home screen if the user is already logged in.
+  // const { user } = usePrivy()
+  // const { login } = useLogin()
+  const { login } = useLogin()
+
+  // if (user) {
+  //   router.push('/HomeScreen')
+  // }
+
+  const handlerLogin = async () => {
+    const result = await login({ loginMethods: ['google']})
+    console.log('Login result:', result)
+  }
+
   return (
     <AppView
       style={{
@@ -40,7 +47,7 @@ export default function SignIn() {
         <View style={{ marginBottom: 16 }}>
           <Button
             title="Connect"
-            onPress={login}
+            onPress={handlerLogin}
             color="#007AFF"
           />
         </View>

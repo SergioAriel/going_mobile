@@ -1,19 +1,23 @@
 
 import React from 'react';
-import { View, Button } from 'react-native';
-import { useLogin, useLogout, usePrivy } from '@privy-io/expo';
+import { View, Button, TouchableOpacity, Text } from 'react-native';
+import { usePrivy } from '@privy-io/expo';
+import { useLogin } from '@privy-io/expo/ui';
 
 export default function SettingsTab() {
-    const { authenticated } = usePrivy();
+    const { user, logout } = usePrivy();
     const { login } = useLogin();
-    const { logout } = useLogout();
 
     return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            {authenticated ? (
-                <Button title="Logout" onPress={() => logout()} />
+        <View className="flex-1 items-center justify-center p-5">
+            {user ? (
+                <TouchableOpacity className="bg-red-500 p-3 rounded-md" onPress={() => logout()}>
+                    <Text className="text-white font-bold">Logout</Text>
+                </TouchableOpacity>
             ) : (
-                <Button title="Login" onPress={() => login()} />
+                <TouchableOpacity className="bg-blue-500 p-3 rounded-md" onPress={() => login({loginMethods: ['google']})}>
+                    <Text className="text-white font-bold">Login</Text>
+                </TouchableOpacity>
             )}
         </View>
     );

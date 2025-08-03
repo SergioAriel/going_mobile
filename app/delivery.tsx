@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
+import { View, Text, Button, TouchableOpacity } from 'react-native';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 
@@ -28,11 +28,11 @@ const DeliveryScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Delivery Simulation</Text>
+        <View className="flex-1 items-center justify-center">
+            <Text className="text-2xl font-bold mb-5">Delivery Simulation</Text>
             {location ? (
                 <MapView
-                    style={styles.map}
+                    style={{ width: '100%', height: '70%' }}
                     initialRegion={{
                         latitude: location.coords.latitude,
                         longitude: location.coords.longitude,
@@ -51,26 +51,11 @@ const DeliveryScreen = () => {
             ) : (
                 <Text>{errorMsg || 'Getting location...'}</Text>
             )}
-            <Button title="Update Location" onPress={updateLocation} />
+            <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={updateLocation}>
+                <Text className="text-white text-center font-bold">Update Location</Text>
+            </TouchableOpacity>
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    map: {
-        width: '100%',
-        height: '70%',
-    },
-});
 
 export default DeliveryScreen;

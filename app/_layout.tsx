@@ -1,15 +1,20 @@
 import { PortalHost } from '@rn-primitives/portal';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { AppProviders } from '@/components/app-providers';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
 import { useTrackLocations } from '@/hooks/use-track-locations';
 import { AppSplashController } from '@/components/app-splash-controller';
-import { PrivyElements, usePrivy } from '@privy-io/expo';
+import { usePrivy } from '@privy-io/expo';
+import { PrivyElements } from '@privy-io/expo/ui';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import { SocketProvider } from '@/context/SocketContext';
+import { SolanaProvider } from '@/context/SolanaContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,44 +47,46 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <AppProviders>
-        <AppSplashController />
-        <RootNavigator />
-        <StatusBar style="auto" />
-      </AppProviders>
-      <PortalHost />
-    </View>
+    <>
+      <View style={{ flex: 1 }}
+        onLayout={onLayoutRootView}
+      >
+        <AppProviders>
+          <SocketProvider>
+            <SolanaProvider>
+              <Header />
+              <AppSplashController />
+              <RootNavigator />
+              <Footer />
+              <StatusBar style="auto" />
+              <PrivyElements />
+            </SolanaProvider>
+          </SocketProvider>
+        </AppProviders>
+        <PortalHost />
+      </View>
+    </>
   );
 }
 
 function RootNavigator() {
   const { user, isReady } = usePrivy();
 
+  useEffect(() => {
+    if (!isReady) return;
+
+    if (user) {
+      router.replace('/');
+    } else {
+      router.replace('/sign-in');
+    }
+  }, [isReady, user]);
+
   if (!isReady) {
-    // TODO: we can return a loading indicator here
     return null;
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="HomeScreen" />
-        <Stack.Screen name="CategoriesScreen" />
-        <Stack.Screen name="ProductsScreen" />
-        <Stack.Screen name="ProductDetailScreen" />
-        <Stack.Screen name="CartScreen" />
-        <Stack.Screen name="CheckoutScreen" />
-        <Stack.Screen name="DeliveryScreen" />
-        <Stack.Screen name="OffersScreen" />
-        <Stack.Screen name="OrderScreen" />
-        <Stack.Screen name="ProfileScreen" />
-        <Stack.Screen name="UploadProductScreen" />
-        <Stack.Screen name="+not-found" />
-      </Stack.Protected>
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="sign-in" />
-      </Stack.Protected>
-    </Stack>
+    <Stack screenOptions={{ headerShown: false }} />
   );
 }
