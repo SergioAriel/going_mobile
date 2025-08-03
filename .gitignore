@@ -80,5 +80,7 @@ yarn-error.*
 
 # @end expo-cli
 
+# build
  /android
  /ios
+ *.apk
