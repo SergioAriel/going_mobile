@@ -10,8 +10,6 @@ import { router } from 'expo-router';
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: PropsWithChildren) {
-
-  console.log(process.env.EXPO_PUBLIC_PRIVY_APP_ID, process.env.EXPO_PUBLIC_PRIVY_CLIENT);
   return (
     <AppTheme>
       <QueryClientProvider client={queryClient}>

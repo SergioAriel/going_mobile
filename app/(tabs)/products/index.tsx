@@ -42,8 +42,9 @@ const ProductsScreen = () => {
           ...(searchQuery && { name: { $regex: searchQuery, $options: 'i' } })
         }
         const sort = sortOptions.find(({ value }) => value === sortBy)?.sort || {};
-        const allProducts = await getProducts(find, sort as any);
-        setProducts(allProducts);
+        const allProducts = await getProducts({find, sort });
+        console.log(allProducts)
+        setProducts(allProducts.results);
       } catch {
         setError('Failed to fetch products');
       } finally {

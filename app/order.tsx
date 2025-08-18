@@ -8,9 +8,11 @@ import MapView, { Marker } from 'react-native-maps';
 import QRCode from 'react-native-qrcode-svg';
 import { Camera } from 'expo-camera';
 import { useSocket } from '@/context/SocketContext';
+import { usePrivy } from '@privy-io/expo';
 
 const OrderScreen = () => {
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
+    const { getAccessToken } = usePrivy();
     const socket = useSocket();
     const [order, setOrder] = useState<Order | null>(null);
     const [deliveryLocation, setDeliveryLocation] = useState<{ lat: number, lng: number } | null>(null);
@@ -33,12 +35,13 @@ const OrderScreen = () => {
     useEffect(() => {
         const fetchOrder = async () => {
             setLoading(true);
-            const fetchedOrder = await getOrder({ _id: orderId });
+            const token = await getAccessToken();
+            const fetchedOrder = await getOrder({ _id: orderId }, token || undefined);
             setOrder(fetchedOrder);
             setLoading(false);
         };
         fetchOrder();
-    }, [orderId]);
+    }, [orderId, getAccessToken]);
 
     const handleScanSuccess = async ({ data }: { data: string }) => {
         setShowScanner(false);

@@ -21,12 +21,8 @@ const HomeScreen = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        throw new Error('No access token found');
-      }
-      const featuredProducts = await getProducts({ find: { isFeatured: true } });
-      setProducts(featuredProducts);
+      const response = await getProducts({ find: { isFeatured: true } });
+      setProducts(response.results);
     } catch (err) {
       setError('Failed to fetch products. Please try again.');
     } finally {
@@ -68,7 +64,7 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          {products.map((product) => (
+          {products?.map((product) => (
             <View key={product._id.toString()} style={{ width: '48%' }}>
               <ProductCard product={product} />
             </View>

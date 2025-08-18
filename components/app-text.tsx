@@ -1,53 +1,17 @@
-import { StyleSheet, Text, type TextProps } from 'react-native'
-import { useThemeColor } from '@/hooks/use-theme-color'
+import { Text, type TextProps } from 'react-native';
 
 export type AppTextProps = TextProps & {
-  lightColor?: string
-  darkColor?: string
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link'
+  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+};
+
+export function AppText({ className, type = 'default', ...rest }: AppTextProps) {
+  const typeClasses = {
+    default: 'text-base leading-6 text-gray-900 dark:text-white',
+    defaultSemiBold: 'text-base leading-6 font-semibold text-gray-900 dark:text-white',
+    title: 'text-4xl font-bold leading-10 text-gray-900 dark:text-white',
+    subtitle: 'text-xl font-bold text-gray-900 dark:text-white',
+    link: 'text-base leading-loose text-blue-600',
+  };
+
+  return <Text className={`${typeClasses[type]} ${className || ''}`} {...rest} />;
 }
-
-export function AppText({ style, lightColor, darkColor, type = 'default', ...rest }: AppTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text')
-
-  return (
-    <Text
-      style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
-        style,
-      ]}
-      {...rest}
-    />
-  )
-}
-
-const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 16,
-    color: '#0a7ea4',
-  },
-})

@@ -6,6 +6,7 @@ export function useTrackLocations(onChange: (pathname: string, params: UnknownOu
   const pathname = usePathname()
   const params = useGlobalSearchParams()
   useEffect(() => {
+    // TODO: Add your own analytics tracking here
     onChange(pathname, params)
-  }, [onChange, pathname, params])
+  }, [onChange, pathname, params]);
 }

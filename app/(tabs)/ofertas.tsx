@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
+import Header from '@/components/layout/Header';
 import ProductCard from '@/components/products/ProductCard';
 import { Product } from '@/interfaces';
 
@@ -44,11 +45,14 @@ const offerProducts: Product[] = [
   ];
 
 const OffersScreen = () => (
-  <FlatList
-    data={offerProducts}
-    keyExtractor={(item) => item._id}
-    renderItem={({ item }) => <ProductCard product={item} />}
-  />
+  <View style={{ flex: 1 }}>
+    <Header />
+    <FlatList
+      data={offerProducts}
+      keyExtractor={(item) => item._id}
+      renderItem={({ item }) => <ProductCard product={item} />}
+    />
+  </View>
 );
 
 const styles = StyleSheet.create({

@@ -85,7 +85,7 @@ const HeroSlider = () => {
       />
       <Animated.View style={[styles.slide, animatedStyle]}>
         <Text style={styles.title}>
-          <Text style={styles.titleBrand}>Going</Text> Marketplace
+          <Text style={styles.titleBrand}>GOING</Text> Marketplace
         </Text>
         <Text style={styles.subtitle}>{slide.subtitle}</Text>
         {slide.buttons && (
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   titleBrand: {
     // This is a trick to simulate gradient text, not perfect
-    color: '#14BFFB', 
+    color: '#D300E5', 
   },
   subtitle: {
     fontSize: 22,
