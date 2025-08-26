@@ -1,50 +1,62 @@
-# Welcome to your Expo app 👋
+# Going Mobile: La Aplicación de Comercio Justo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![Going Logo](URL_DEL_LOGO_AQUI) <!-- Reemplazar con la URL de un logo cuando esté disponible -->
 
-## Get started
+**Going Mobile** es la aplicación de usuario para el ecosistema "Going", una red de comercio descentralizado construida sobre Solana. Esta aplicación es la puerta de entrada para que compradores y vendedores interactúen con nuestro protocolo de una manera simple e intuitiva.
 
-1. Install dependencies
+Nuestra misión es arreglar el modelo extractivo del e-commerce actual, devolviendo el poder y el valor a los usuarios a través de comisiones justas y un sistema de recompensas único.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## ✨ Características Principales
 
-   ```bash
-   npx expo start
-   ```
+- **Marketplace Descentralizado:** Explora y compra productos y servicios en una red peer-to-peer.
+- **Escrow Inteligente:** Cada compra está protegida por nuestro smart contract de escrow, que retiene los fondos hasta que la entrega es confirmada.
+- **Recompensas por Staking ($G):** Gana rendimientos mientras esperas tu pedido. Los fondos en escrow se ponen en staking y los beneficios se reparten entre comprador y vendedor en forma de puntos $G.
+- **Confirmación Segura por QR:** Confirma la recepción de tus productos de forma segura y fácil escaneando un código QR, liberando los fondos al vendedor instantáneamente.
+- **Billetera Integrada:** Revisa tu saldo de USDC y tus recompensas $G directamente en la aplicación.
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🛠️ Stack Tecnológico
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **Framework:** React Native con Expo
+- **Estilos:** NativeWind (Tailwind CSS para React Native)
+- **Blockchain:** Solana (usando `@solana/web3.js`)
+- **Autenticación:** Privy.io
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## 🚀 Cómo Empezar (Para Desarrolladores)
 
+Sigue estos pasos para levantar el proyecto en tu entorno local.
+
+**1. Clona el Repositorio:**
 ```bash
-npm run reset-project
+git clone [URL_DEL_REPOSITORIO]
+cd going_mobile
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**2. Instala las Dependencias:**
+```bash
+# Usando npm
+npm install
 
-## Learn more
+# O usando yarn
+yarn install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+**3. Configura tus Variables de Entorno:**
+Crea un archivo `.env` en la raíz del proyecto y añade las claves necesarias (ej. `EXPO_PUBLIC_PRIVY_APP_ID`).
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+**4. Inicia la Aplicación:**
+```bash
+# Iniciar el servidor de desarrollo limpiando el caché
+npx expo start -c
+```
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🤝 Contribuciones
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Nuestro protocolo core será de código abierto. Si estás interesado en contribuir al ecosistema "Going", por favor revisa nuestra guía de contribución (próximamente).

@@ -15,7 +15,6 @@
     "start": "expo start --dev-client",
     "web": "expo start --web"
   },
-  "description": "A template for building a Solana mobile app with Expo and React Native.",
   "keywords": [
     "expo",
     "mobile-wallet-adapter",

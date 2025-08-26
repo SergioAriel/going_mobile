@@ -19,6 +19,7 @@ config.resolver.extraNodeModules = {
 
 // 3. Solucionador personalizado para manejar las exportaciones de paquetes de Privy y otras incompatibilidades.
 const resolveRequestWithPackageExports = (context, moduleName, platform) => {
+  console.log("Resolving:", moduleName);
   // Las exportaciones de paquetes en `isows` (una dependencia de `viem`) son incompatibles, por lo que deben deshabilitarse
   if (moduleName === "isows") {
     const ctx = { ...context, unstable_enablePackageExports: false };

@@ -1,0 +1,7 @@
+env: load .env.local .env
+env: export EXPO_PUBLIC_API_URL MONGODB_URI CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET CLOUDINARY_UPLOAD_PRESET CLOUDINARY_URL EXPO_PUBLIC_PRIVY_APP_ID EXPO_PUBLIC_PRIVY_CLIENT PRIVY_APP_SECRET API_KEY_COINMARKETCAP ENCRYPTION_KEY
+Starting project at /Users/sergiosolis/Programacion/going/going_mobile
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.

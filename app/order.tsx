@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useSocket } from '@/context/SocketContext';
 import { Order } from '@/interfaces';
-import { getOrder, updateOrder } from '@/lib/ServerActions/orders';
+import { getOrder, getOrders, updateOrder } from '@/lib/ServerActions/orders';
+import { usePrivy } from '@privy-io/expo';
+import { CameraView } from 'expo-camera';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import QRCode from 'react-native-qrcode-svg';
-import { Camera } from 'expo-camera';
-import { useSocket } from '@/context/SocketContext';
-import { usePrivy } from '@privy-io/expo';
 
 const OrderScreen = () => {
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -36,8 +36,8 @@ const OrderScreen = () => {
         const fetchOrder = async () => {
             setLoading(true);
             const token = await getAccessToken();
-            const fetchedOrder = await getOrder({ _id: orderId }, token || undefined);
-            setOrder(fetchedOrder);
+            const fetchedOrder = await getOrders({ _id: orderId }, token || undefined);
+            setOrder(fetchedOrder[0]);
             setLoading(false);
         };
         fetchOrder();
@@ -76,9 +76,12 @@ const OrderScreen = () => {
                 </View>
             )}
             {showScanner ? (
-                <Camera
+                <CameraView
                     style={StyleSheet.absoluteFillObject}
-                    onBarCodeScanned={handleScanSuccess}
+                    onBarcodeScanned={handleScanSuccess}
+                    barcodeScannerSettings={{
+                        barcodeTypes: ["qr"],
+                    }}
                 />
             ) : (
                 <View>

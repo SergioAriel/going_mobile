@@ -15,12 +15,12 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCart, useAlert, useCurrencies } from '@/context';
 import { AddressForm, CartItem, Order } from '@/interfaces';
 import { getOneProduct } from '@/lib/ServerActions/products';
-import { uploadOrder, updateOrder } from '@/lib/ServerActions/orders';
+import { uploadOrder, updateOrder, getOrder } from '@/lib/ServerActions/orders';
 import { AppPage } from '@/components/app-page';
 import { AntDesign } from '@expo/vector-icons';
 import { usePrivy, useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { Connection, PublicKey, SystemProgram, Transaction, clusterApiUrl, LAMPORTS_PER_SOL, TransactionMessage, VersionedTransaction, TransactionInstruction } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, clusterApiUrl, LAMPORTS_PER_SOL, TransactionMessage, VersionedTransaction, TransactionInstruction } from '@solana/web3.js';
 import { AppText } from '@/components/app-text';
 import { toByteArray } from 'react-native-quick-base64';
 import bs58 from 'bs58';
@@ -28,7 +28,7 @@ import bs58 from 'bs58';
 // Componente principal que carga los datos del checkout
 const CheckoutScreen = () => {
   const { items, clearCart } = useCart();
-  const { productId, quantity } = useLocalSearchParams<{ productId: string, quantity: string }>();
+  const { productId, quantity, orderId } = useLocalSearchParams<{ productId: string, quantity: string, orderId: string }>();
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
@@ -37,7 +37,17 @@ const CheckoutScreen = () => {
   useEffect(() => {
     const loadItems = async () => {
       setLoading(true);
-      if (productId && quantity) {
+      if (orderId) {
+        setIsCartPurchase(false);
+        try {
+          const order = await getOrder({ _id: orderId });
+          if (order) {
+            setCheckoutItems(order.items);
+          }
+        } catch (error) {
+          console.error("Error fetching order:", error);
+        }
+      } else if (productId && quantity) {
         setIsCartPurchase(false);
         try {
           const response = await getOneProduct({ _id: productId });
@@ -54,7 +64,7 @@ const CheckoutScreen = () => {
       setLoading(false);
     };
     loadItems();
-  }, [productId, quantity, items]);
+  }, [orderId, productId, quantity, items]);
 
   if (loading) {
     return (
@@ -101,7 +111,7 @@ const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items
 
   const handlePayWithPrivyWallet = async () => {
     if (!privyWallets || privyWallets?.length === 0) {
-      handleAlert({ title: "Error", message: "No Privy wallets available." });
+      handleAlert({ isError: true, message: "No Privy wallets available." });
       return;
     }
     try {
@@ -112,7 +122,7 @@ const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items
       setIsPrivyConfirmationModalVisible(true);
     } catch (error) {
       console.error("Error fetching Privy wallet balance:", error);
-      handleAlert({ title: "Error", message: "Could not fetch wallet balance." });
+      handleAlert({ isError: true, message: "Could not fetch wallet balance." });
     } finally {
       setLoading(false);
     }
@@ -204,7 +214,7 @@ const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items
       return txSignature;
     } catch (error) {
       console.error("Privy Wallet Error:", error);
-      handleAlert({ title: "Error", message: "Failed to pay with Privy Wallet. Please try again." });
+      handleAlert({ isError: true, message: "Failed to pay with Privy Wallet. Please try again." });
     } finally {
       setLoading(false);
     }

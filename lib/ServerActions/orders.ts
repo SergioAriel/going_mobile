@@ -2,6 +2,18 @@ import { Order } from "@/interfaces";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+export const getOrder = async ({ _id }: { _id: string }, token?: string): Promise<Order> => {
+    const response = await fetch(`${API_URL}/orders/${_id}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!response.ok) {
+        throw new Error("Failed to fetch order");
+    }
+    return response.json();
+};
+
 export const getOrders = async (query: any, token?: string): Promise<Order[]> => {
     const urlQuery = new URLSearchParams(query).toString();
     const response = await fetch(`${API_URL}/orders?${urlQuery}`, {
