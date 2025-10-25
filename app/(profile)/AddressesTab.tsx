@@ -3,7 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, TextInput, S
 import { useUser } from '@/context/UserContext';
 import { usePrivy } from '@privy-io/expo';
 import { getUser, updateUser } from '@/lib/ServerActions/users';
-import { User, Address, AddressForm } from '@/interfaces';
+import { User, Address } from '@/interfaces';
 import { AppPage } from '@/components/app-page';
 import { AppText } from '@/components/app-text';
 
@@ -119,40 +119,3 @@ const AddressesTab = () => {
 };
 
 export default AddressesTab;
-
-
-// const AddressModal = ({ visible, onClose, onSave, address }) => {
-//     const [formState, setFormState] = useState<AddressForm | null>(address);
-
-//     useEffect(() => {
-//         setFormState(address);
-//     }, [address]);
-
-//     const handleInputChange = (name: string, value: string) => {
-//         setFormState(prev => prev ? { ...prev, [name]: value } : null);
-//     };
-
-//     return (
-//         <Modal visible={visible} onRequestClose={onClose} transparent={true} animationType="slide">
-//             <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-//                 <View className="bg-white p-5 rounded-lg w-11/12">
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="Address Name" value={formState?.name || ''} onChangeText={(text) => handleInputChange('name', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="Street" value={formState?.street || ''} onChangeText={(text) => handleInputChange('street', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="City" value={formState?.city || ''} onChangeText={(text) => handleInputChange('city', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="State" value={formState?.state || ''} onChangeText={(text) => handleInputChange('state', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="Zip Code" value={formState?.zipCode || ''} onChangeText={(text) => handleInputChange('zipCode', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="Country" value={formState?.country || ''} onChangeText={(text) => handleInputChange('country', text)} />
-//                     <TextInput className="border border-gray-300 rounded-md p-3 mb-3" placeholder="Phone" value={formState?.phone || ''} onChangeText={(text) => handleInputChange('phone', text)} />
-//                     <View className="flex-row justify-around">
-//                         <TouchableOpacity className="bg-blue-500 p-3 rounded-md flex-1 mr-2" onPress={() => onSave(formState)}>
-//                             <Text className="text-white text-center font-bold">Save</Text>
-//                         </TouchableOpacity>
-//                         <TouchableOpacity className="bg-gray-500 p-3 rounded-md flex-1 ml-2" onPress={onClose}>
-//                             <Text className="text-white text-center font-bold">Cancel</Text>
-//                         </TouchableOpacity>
-//                     </View>
-//                 </View>
-//             </View>
-//         </Modal>
-//     );
-// };

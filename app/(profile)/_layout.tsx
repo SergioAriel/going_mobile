@@ -1,30 +1,22 @@
-
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
+import { useUser } from '@/context/UserContext';
 
 export default function ProfileTabLayout() {
+  const { userData } = useUser();
+
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="AccountTab"
         options={{
           title: 'Account',
           tabBarIcon: ({ color }) => <FontAwesome size={28} name="user" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="AddressesTab"
-        options={{
-          title: 'Addresses',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="map-marker" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="NotificationsTab"
-        options={{
-          title: 'Notifications',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="bell" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -35,12 +27,13 @@ export default function ProfileTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="PaymentTab"
+        name="AddressesTab"
         options={{
-          title: 'Payment',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="credit-card" color={color} />,
+          title: 'Addresses',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="map-marker" color={color} />,
         }}
       />
+      
       <Tabs.Screen
         name="SellingTab"
         options={{
@@ -48,18 +41,23 @@ export default function ProfileTabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome size={28} name="tag" color={color} />,
         }}
       />
+
+      {/* Seller-specific tabs */}
+      {userData?.isSeller && (
+        <Tabs.Screen
+          name="ShipmentsTab"
+          options={{
+            title: 'Shipments',
+            tabBarIcon: ({ color }) => <FontAwesome size={28} name="truck" color={color} />,
+          }}
+        />
+      )}
+
       <Tabs.Screen
         name="SettingsTab"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <FontAwesome size={28} name="cog" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="WishlistTab"
-        options={{
-          title: 'Wishlist',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="heart" color={color} />,
         }}
       />
     </Tabs>

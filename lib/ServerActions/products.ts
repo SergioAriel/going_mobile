@@ -2,6 +2,7 @@ import { Product } from "@/interfaces";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+// Public endpoint, no token needed
 export const getOneProduct = async ({_id}: {_id: string}) => {
     const response = await fetch(`${API_URL}/products/${_id}`);
     if (!response.ok) {
@@ -15,6 +16,7 @@ interface GetProductsParams {
     sort?: Record<string, any>;
 }
 
+// Public endpoint, no token needed
 export const getProducts = async ({ find = {}, sort = { metacritic: -1 } }: GetProductsParams) => {
     const query = new URLSearchParams({
         find: JSON.stringify(find),
@@ -29,9 +31,13 @@ export const getProducts = async ({ find = {}, sort = { metacritic: -1 } }: GetP
     return response.json();
 }
 
-export const uploadProduct = async (product: FormData): Promise<Product> => {
+// Protected endpoint, token required
+export const uploadProduct = async (product: FormData, token: string): Promise<Product> => {
     const response = await fetch(`${API_URL}/products`, {
         method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
         body: product,
     });
     if (!response.ok) {
@@ -40,10 +46,14 @@ export const uploadProduct = async (product: FormData): Promise<Product> => {
     return response.json();
 };
 
-export const updateProduct = async (product: Partial<Product> & { _id: string }): Promise<Product> => {
+// Protected endpoint, token required
+export const updateProduct = async (product: Partial<Product> & { _id: string }, token: string): Promise<Product> => {
     const response = await fetch(`${API_URL}/products/${product._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(product),
     });
     if (!response.ok) {
@@ -52,9 +62,13 @@ export const updateProduct = async (product: Partial<Product> & { _id: string })
     return response.json();
 };
 
-export const deleteProduct = async (productId: string): Promise<void> => {
+// Protected endpoint, token required
+export const deleteProduct = async (productId: string, token: string): Promise<void> => {
     const response = await fetch(`${API_URL}/products/${productId}`, {
         method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
     });
     if (!response.ok) {
         throw new Error("Failed to delete product");

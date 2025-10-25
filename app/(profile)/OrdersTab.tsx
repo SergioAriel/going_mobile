@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { usePrivy } from '@privy-io/expo';
-import { getOrders, updateOrder } from '@/lib/ServerActions/orders';
+import { getOrders } from '@/lib/ServerActions/orders';
 import { Order } from '@/interfaces';
 import { OrderCard } from '@/components/orders/OrderCard';
 import { AppPage } from '@/components/app-page';
-import QRCode from 'react-native-qrcode-svg';
-import { Camera } from 'expo-camera';
 
 const OrdersTab = () => {
   const { user, getAccessToken } = usePrivy();
@@ -14,8 +12,6 @@ const OrdersTab = () => {
   const [ordersSeller, setOrdersSeller] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showQR, setShowQR] = useState<string | null>(null);
-  const [showScanner, setShowScanner] = useState<boolean>(false);
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -24,13 +20,30 @@ const OrdersTab = () => {
     setError(null);
     try {
       const token = await getAccessToken();
-      const buyerOrders = await getOrders({ find: { 'buyer._id': user.id } }, token || undefined);
+      
+      // Enhanced query for buyer orders, similar to web
+      const connectedWallets = user.linked_accounts
+        .filter(acc => acc.type === 'wallet')
+        .map(acc => acc.address);
+
+      const buyerQuery = {
+        $or: [
+          { 'buyer.walletAddress': { $in: connectedWallets } },
+          { 'buyer._id': user.id }
+        ]
+      };
+      const buyerOrders = await getOrders({ find: buyerQuery }, token || undefined);
       setOrdersBuyer(buyerOrders);
-      // Assuming you have a way to identify sellers, you can fetch seller orders here
-      // For now, I'll leave it empty
-      // const sellerOrders = await getOrders({ find: { 'seller._id': user.id } });
-      // setOrdersSeller(sellerOrders);
+
+      // Seller orders logic remains the same
+      if (user.isSeller) { // Assuming user object has isSeller property
+        const sellerQuery = { sellers: user.id };
+        const sellerOrders = await getOrders({ find: sellerQuery }, token || undefined);
+        setOrdersSeller(sellerOrders);
+      }
+
     } catch (err) {
+      console.error("Failed to fetch orders:", err);
       setError('Failed to fetch orders. Please try again.');
     } finally {
       setLoading(false);
@@ -40,26 +53,6 @@ const OrdersTab = () => {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
-
-  const handleShowQR = (orderId: string) => {
-    setShowQR(orderId);
-  };
-
-  const handleScanSuccess = async ({ data }: { data: string }) => {
-    setShowScanner(false);
-    try {
-        const token = await getAccessToken();
-      await updateOrder({
-        _id: data,
-        status: "delivered",
-      }, token || undefined);
-      alert("Order delivered successfully");
-      fetchOrders(); // Refresh orders
-    } catch (error) {
-      console.error(error);
-      alert("Error delivering order");
-    }
-  };
 
   if (loading) {
     return (
@@ -82,40 +75,35 @@ const OrdersTab = () => {
 
   return (
     <AppPage className="p-5">
-      {showQR && (
-        <Modal visible={true} onRequestClose={() => setShowQR(null)} transparent={true} animationType="slide">
-          <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-            <View className="bg-white p-5 rounded-lg items-center">
-              <QRCode value={showQR} size={256} />
-              <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowQR(null)}>
-                <Text className="text-white text-center font-bold">Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-      {showScanner && (
-        <Modal visible={true} onRequestClose={() => setShowScanner(false)}>
-          <Camera style={{ flex: 1 }} onBarCodeScanned={handleScanSuccess} />
-          <TouchableOpacity className="bg-blue-500 p-3 rounded-md m-5" onPress={() => setShowScanner(false)}>
-            <Text className="text-white text-center font-bold">Close</Text>
-          </TouchableOpacity>
-        </Modal>
-      )}
-      <View>
+      <View className="mb-8">
         <Text className="text-xl font-bold mb-3">My Purchase Orders</Text>
         <FlatList
           data={ordersBuyer}
           keyExtractor={(item) => item._id.toString()}
-          renderItem={({ item }) => <OrderCard order={item} isBuyer onShowQR={handleShowQR} />}
+          renderItem={({ item }) => <OrderCard order={item} isBuyer />}
           ListEmptyComponent={() => (
-            <View className="flex-1 justify-center items-center">
-              <Text className="text-lg text-gray-500">You have no orders yet.</Text>
+            <View className="py-10 items-center">
+              <Text className="text-lg text-gray-500">You have no purchase orders.</Text>
             </View>
           )}
         />
       </View>
-      {/* Add seller section if needed */}
+
+      {user.isSeller && (
+        <View>
+          <Text className="text-xl font-bold mb-3">My Sales Orders</Text>
+          <FlatList
+            data={ordersSeller}
+            keyExtractor={(item) => item._id.toString()}
+            renderItem={({ item }) => <OrderCard order={item} isSeller />}
+            ListEmptyComponent={() => (
+              <View className="py-10 items-center">
+                <Text className="text-lg text-gray-500">You have no sales orders.</Text>
+              </View>
+            )}
+          />
+        </View>
+      )}
     </AppPage>
   );
 };

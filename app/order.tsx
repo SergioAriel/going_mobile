@@ -1,122 +1,99 @@
-
-import { useSocket } from '@/context/SocketContext';
-import { Order } from '@/interfaces';
-import { getOrder, getOrders, updateOrder } from '@/lib/ServerActions/orders';
-import { usePrivy } from '@privy-io/expo';
-import { CameraView } from 'expo-camera';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import QRCode from 'react-native-qrcode-svg';
+import { getOrder } from '@/lib/ServerActions/orders';
+import { getShipments } from '@/lib/ServerActions/shipments';
+import { Order, Shipment } from '@/interfaces';
+import { ShipmentCard } from '@/components/shipments/ShipmentCard';
+import { AppPage } from '@/components/app-page';
+import { useUser } from '@/context/UserContext';
 
-const OrderScreen = () => {
+const statusOrder: Record<string, number> = {
+    'pending': 1, 'ready_to_ship': 2, 'in_transit': 3, 'shipped_by_seller': 4, 
+    'shipped': 5, 'delivered': 6, 'completed': 7, 'cancelled': 8,
+};
+
+const OrderDetailScreen = () => {
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
-    const { getAccessToken } = usePrivy();
-    const socket = useSocket();
+    const { userData } = useUser();
     const [order, setOrder] = useState<Order | null>(null);
-    const [deliveryLocation, setDeliveryLocation] = useState<{ lat: number, lng: number } | null>(null);
+    const [shipments, setShipments] = useState<Shipment[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showScanner, setShowScanner] = useState(false);
-    const [showSellerQR, setShowSellerQR] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (socket && orderId) {
-            socket.emit('join_order_room', orderId);
-            socket.on('location_updated', (location: { lat: number, lng: number }) => {
-                setDeliveryLocation(location);
-            });
-            return () => {
-                socket.off('location_updated');
-            };
-        }
-    }, [socket, orderId]);
+    const fetchOrderDetails = useCallback(async () => {
+        if (!orderId) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const orderData = await getOrder(orderId);
+            setOrder(orderData);
 
-    useEffect(() => {
-        const fetchOrder = async () => {
-            setLoading(true);
-            const token = await getAccessToken();
-            const fetchedOrder = await getOrders({ _id: orderId }, token || undefined);
-            setOrder(fetchedOrder[0]);
+            if (orderData) {
+                const shipmentData = await getShipments({ orderId: orderId });
+                shipmentData.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
+                setShipments(shipmentData);
+            }
+        } catch (e) {
+            setError("Failed to load order details.");
+            console.error(e);
+        } finally {
             setLoading(false);
-        };
-        fetchOrder();
-    }, [orderId, getAccessToken]);
+        }
+    }, [orderId]);
 
-    const handleScanSuccess = async ({ data }: { data: string }) => {
-        setShowScanner(false);
-        if (data !== order?._id.toString()) {
-            alert("Error: The scanned QR code does not match this order.");
-            return;
-        }
-        if (order) {
-            await updateOrder({ _id: order._id as string, status: 'delivered' });
-            const updatedOrder = await getOrder({ _id: order._id as string });
-            setOrder(updatedOrder);
-            alert('Order reception confirmed successfully!');
-        }
-    };
+    useEffect(() => {
+        fetchOrderDetails();
+    }, [fetchOrderDetails]);
 
     if (loading) {
-        return <View className="flex-1 justify-center items-center"><Text>Loading order details...</Text></View>;
+        return <AppPage className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></AppPage>;
+    }
+
+    if (error) {
+        return (
+            <AppPage className="flex-1 justify-center items-center p-5">
+                <Text className="text-red-500 mb-5">{error}</Text>
+                <TouchableOpacity onPress={fetchOrderDetails} className="bg-primary p-3 rounded-lg">
+                    <Text className="text-white font-bold">Retry</Text>
+                </TouchableOpacity>
+            </AppPage>
+        );
     }
 
     if (!order) {
-        return <View className="flex-1 justify-center items-center"><Text>Order not found.</Text></View>;
+        return <AppPage className="flex-1 justify-center items-center"><Text>Order not found.</Text></AppPage>;
     }
 
+    const isUserSellerOfOrder = order.sellers.includes(userData?._id.toString() || '');
+
     return (
-        <View className="flex-1 p-5 bg-gray-100">
-            {showSellerQR && (
-                <View className="flex-1 items-center justify-center">
-                    <QRCode value={order._id.toString()} size={256} />
-                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowSellerQR(false)}>
-                        <Text className="text-white text-center font-bold">Close</Text>
-                    </TouchableOpacity>
+        <ScrollView>
+            <AppPage>
+                <View className="p-5 bg-white dark:bg-gray-800 shadow-md mb-4">
+                    <Text className="text-2xl font-bold text-gray-900 dark:text-white">Order Details</Text>
+                    <Text className="text-gray-500 dark:text-gray-400">Order ID: {order._id.toString()}</Text>
+                    <Text className="text-gray-500 dark:text-gray-400">Date: {new Date(order.date).toLocaleDateString()}</Text>
+                    <Text className="text-gray-500 dark:text-gray-400">Status: <Text className="font-medium text-primary capitalize">{order.status}</Text></Text>
                 </View>
-            )}
-            {showScanner ? (
-                <CameraView
-                    style={StyleSheet.absoluteFillObject}
-                    onBarcodeScanned={handleScanSuccess}
-                    barcodeScannerSettings={{
-                        barcodeTypes: ["qr"],
-                    }}
-                />
-            ) : (
-                <View>
-                    <Text className="text-2xl font-bold mb-5">Order Details</Text>
-                    <Text>Order ID: {order._id}</Text>
-                    <Text>Status: {order.status}</Text>
-                    {deliveryLocation && (
-                        <MapView
-                            style={{ width: '100%', height: 200, marginVertical: 20 }}
-                            initialRegion={{
-                                latitude: deliveryLocation.lat,
-                                longitude: deliveryLocation.lng,
-                                latitudeDelta: 0.0922,
-                                longitudeDelta: 0.0421,
-                            }}
-                        >
-                            <Marker
-                                coordinate={{
-                                    latitude: deliveryLocation.lat,
-                                    longitude: deliveryLocation.lng,
-                                }}
-                                title={"Delivery Location"}
+
+                <View className="p-5">
+                    <Text className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Shipments for this Order</Text>
+                    {shipments.length > 0 ? (
+                        shipments.map(shipment => (
+                           <ShipmentCard 
+                                key={shipment._id.toString()} 
+                                shipment={shipment} 
+                                isSeller={isUserSellerOfOrder} 
                             />
-                        </MapView>
+                        ))
+                    ) : (
+                        <Text>No shipments found for this order.</Text>
                     )}
-                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowSellerQR(true)}>
-                        <Text className="text-white text-center font-bold">Generate Pickup QR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-blue-500 p-3 rounded-md mt-5" onPress={() => setShowScanner(true)}>
-                        <Text className="text-white text-center font-bold">Scan to Confirm Delivery</Text>
-                    </TouchableOpacity>
                 </View>
-            )}
-        </View>
+            </AppPage>
+        </ScrollView>
     );
 };
 
-export default OrderScreen;
+export default OrderDetailScreen;

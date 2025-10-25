@@ -1,22 +1,27 @@
-import { Order } from "@/interfaces";
+import { NewOrderPayload, Order } from "@/interfaces";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-export const getOrder = async ({ _id }: { _id: string }, token?: string): Promise<Order> => {
-    const response = await fetch(`${API_URL}/orders/${_id}`, {
+export const createPendingOrder = async (payload: NewOrderPayload, token: string): Promise<string> => {
+    const response = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer ${token}`
-        }
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
     });
     if (!response.ok) {
-        throw new Error("Failed to fetch order");
+        const errorBody = await response.text();
+        throw new Error(`Failed to create pending order: ${errorBody}`);
     }
-    return response.json();
+    const data = await response.json();
+    return data.insertedId;
 };
 
-export const getOrders = async (query: any, token?: string): Promise<Order[]> => {
-    const urlQuery = new URLSearchParams(query).toString();
-    const response = await fetch(`${API_URL}/orders?${urlQuery}`, {
+export const getOrders = async (find: Record<string, any>, token: string): Promise<Order[]> => {
+    const query = new URLSearchParams({ find: JSON.stringify(find) }).toString();
+    const response = await fetch(`${API_URL}/orders?${query}`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
@@ -27,42 +32,14 @@ export const getOrders = async (query: any, token?: string): Promise<Order[]> =>
     return response.json();
 };
 
-export const uploadOrder = async (order: Partial<Order>, token?: string): Promise<string> => {
-    const response = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(order),
-    });
-    // if  
-    const insertedId  = await response.json();
-    return insertedId;
-};
-
-export const updateOrder = async (order: Partial<Order> & { _id: string }, token?: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/orders/${order._id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(order),
-    });
-    if (!response.ok) {
-        throw new Error("Failed to update order");
-    }
-};
-
-export const deleteOrder = async (orderId: string, token?: string): Promise<void> => {
+export const getOrder = async (orderId: string, token: string): Promise<Order | null> => {
     const response = await fetch(`${API_URL}/orders/${orderId}`, {
-        method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
     if (!response.ok) {
-        throw new Error("Failed to delete order");
+        return null;
     }
+    return response.json();
 };

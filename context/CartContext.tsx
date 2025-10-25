@@ -1,21 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { Product } from "@/interfaces";
+import { CartItem, Product } from "@/interfaces";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Definir tipo de producto para evitar uso de 'any'
-export interface CartItem extends Partial<Product> {
-    _id: string;
-    seller: string;
-    name: string;
-    price: number;
-    mainImage: string;
-    quantity: number;
-    addressWallet: string;
-    currency: string;
-    isOffer?: boolean;
-    offerPercentage: number;
-    // convertedPrice: number;
-  }
 
 interface CartContextType {
   items: CartItem[];
@@ -42,19 +27,24 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     loadCart()
   }, []);
 
+  // Helper function to update state and AsyncStorage simultaneously
+  const updateCart = (newItems: CartItem[]) => {
+    setItems(newItems);
+    AsyncStorage.setItem("cart", JSON.stringify(newItems));
+  };
+
   const addToCart = (product: Product, quantity: number) => {
     const existingItem = items.find(item => item._id === product._id);
 
     if (existingItem) {
-      const addItem = items.map(item =>
+      const newItems = items.map(item =>
         item._id === product._id
           ? { ...item, quantity: item.quantity + quantity }
           : item
       );
-      AsyncStorage.setItem("cart", JSON.stringify(addItem));
-      setItems(addItem);
+      updateCart(newItems);
     } else {
-      const addItem = [...items, {
+      const newItems = [...items, {
         _id: product._id.toString(),
         seller: product.seller,
         name: product.name,
@@ -63,18 +53,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         quantity,
         addressWallet: product.addressWallet,
         currency: product.currency,
-        offerPercentage: product.offerPercentage || 0,
+        shippingType: product.shippingType, // UNIFIED
+        pickupAddress: product.pickupAddress, // UNIFIED
         isOffer: product.isOffer || false,
-      }]
-      AsyncStorage.setItem("cart", JSON.stringify(addItem));
-      setItems(addItem);
+        offerPercentage: product.offerPercentage || 0,
+        category: product.category || "",
+      }];
+      updateCart(newItems);
     }
   };
 
   const removeFromCart = (productId: string) => {
-    const newItems = items.filter(item => item._id !== productId)
-    setItems(newItems);
-    AsyncStorage.setItem("cart", JSON.stringify(newItems))
+    const newItems = items.filter(item => item._id !== productId);
+    updateCart(newItems);
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -84,15 +75,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     const newItems = items.map(item =>
         item._id === productId ? { ...item, quantity } : item
-      )
-    AsyncStorage.setItem("cart", JSON.stringify(newItems))
-
-    setItems(newItems);
+      );
+    updateCart(newItems);
   };
 
   const clearCart = () => {
     setItems([]);
-    AsyncStorage.removeItem("cart")
+    AsyncStorage.removeItem("cart");
   };
 
   const getTotalItems = () => {

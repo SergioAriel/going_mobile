@@ -9,323 +9,224 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Modal,
+  Switch
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useCart, useAlert, useCurrencies } from '@/context';
-import { AddressForm, CartItem, Order } from '@/interfaces';
-import { getOneProduct } from '@/lib/ServerActions/products';
-import { uploadOrder, updateOrder, getOrder } from '@/lib/ServerActions/orders';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCart, useAlert, useCurrencies, useUser } from '@/context';
+import { Address, CartItem, NewOrderPayload, Product } from '@/interfaces';
+import { getProducts } from '@/lib/ServerActions/products';
+import { createPendingOrder, getOrder } from '@/lib/ServerActions/orders';
+import { CheckoutComplete } from '@/lib/ServerActions/checkout';
 import { AppPage } from '@/components/app-page';
 import { AntDesign } from '@expo/vector-icons';
-import { usePrivy, useEmbeddedSolanaWallet } from '@privy-io/expo';
+import { useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { Connection, PublicKey, SystemProgram, clusterApiUrl, LAMPORTS_PER_SOL, TransactionMessage, VersionedTransaction, TransactionInstruction } from '@solana/web3.js';
 import { AppText } from '@/components/app-text';
 import { toByteArray } from 'react-native-quick-base64';
-import bs58 from 'bs58';
+import { Picker } from '@react-native-picker/picker';
+import { updateUser } from '@/lib/ServerActions/users';
 
-// Componente principal que carga los datos del checkout
 const CheckoutScreen = () => {
   const { items, clearCart } = useCart();
+  const { getAccessToken } = usePrivy();
   const { productId, quantity, orderId } = useLocalSearchParams<{ productId: string, quantity: string, orderId: string }>();
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState(1);
-  const [isCartPurchase, setIsCartPurchase] = useState(false);
 
   useEffect(() => {
     const loadItems = async () => {
       setLoading(true);
       if (orderId) {
-        setIsCartPurchase(false);
-        try {
-          const order = await getOrder({ _id: orderId });
-          if (order) {
-            setCheckoutItems(order.items);
-          }
-        } catch (error) {
-          console.error("Error fetching order:", error);
+        const token = await getAccessToken();
+        if (!token) { 
+            setLoading(false); 
+            return; 
+        }
+        const order = await getOrder(orderId, token);
+        if (order) {
+          const productIds = order.items.map((item: CartItem) => item._id);
+          const products = await getProducts({find:{_id: { $in: productIds } }});
+          const updatedItems = order.items.map((item: CartItem) => {
+            const product = products.find((p: Product) => p._id === item._id);
+            return product && product.publishStatus === "published"
+              ? { ...product, quantity: item.quantity }
+              : { ...item, name: `${item.name} (Not Available)`, price: 0, quantity: 0 };
+          });
+          setCheckoutItems(updatedItems.filter(item => item.quantity > 0));
         }
       } else if (productId && quantity) {
-        setIsCartPurchase(false);
-        try {
-          const response = await getOneProduct({ _id: productId });
-          if (response && response.product) {
-            setCheckoutItems([{ ...response.product, quantity: Number(quantity) }]);
-          }
-        } catch (error) {
-          console.error("Error fetching product:", error);
+        const products = await getProducts({find: { _id: productId }});
+        if (products && products.length > 0) {
+          setCheckoutItems([{ ...products[0], quantity: Number(quantity) }]);
         }
       } else {
-        setIsCartPurchase(true);
         setCheckoutItems(items);
       }
       setLoading(false);
     };
     loadItems();
-  }, [orderId, productId, quantity, items]);
+  }, [orderId, productId, quantity, items, getAccessToken]);
 
   if (loading) {
-    return (
-      <AppPage className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#14BFFB" />
-      </AppPage>
-    );
+    return <AppPage className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#14BFFB" /></AppPage>;
   }
 
-  return <CheckoutUI items={checkoutItems} clearCart={clearCart} step={step} setStep={setStep} isCartPurchase={isCartPurchase} />;
+  return <CheckoutUI items={checkoutItems} clearCart={clearCart} />;
 };
 
-// Componente de UI para el proceso de checkout
-const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items: CartItem[], clearCart?: () => void, step: number, setStep: (step: number) => void, isCartPurchase: boolean }) => {
+const CheckoutUI = ({ items, clearCart }: { items: CartItem[], clearCart?: () => void }) => {
   const { user, getAccessToken } = usePrivy();
   const { wallets: privyWallets } = useEmbeddedSolanaWallet();
+  const { userData, setUserData } = useUser();
   const { listCryptoCurrencies, userCurrency } = useCurrencies();
   const { handleAlert } = useAlert();
+  const router = useRouter();
 
-  const [address, setAddress] = useState<AddressForm>({ fullName: "", street: "", city: "", state: "", zipCode: "", country: "", phone: "", email: "" });
+  const [step, setStep] = useState(1);
+  const [address, setAddress] = useState<Address>({ name: "", street: "", city: "", state: "", zipCode: "", country: "", phone: "", email: user?.email || "" });
+  const [saveAddress, setSaveAddress] = useState(true);
   const [totalPrice, setTotalPrice] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
-  const [isPrivyConfirmationModalVisible, setIsPrivyConfirmationModalVisible] = useState(false);
-  const [privyWalletBalance, setPrivyWalletBalance] = useState<number | null>(null);
 
-  const handleAddressChange = (field: keyof AddressForm, value: string) => {
+  const handleAddressChange = (field: keyof Address, value: string) => {
     setAddress(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmitAddress = () => setStep(2);
-
-  const completeCheckout = (orderId: string, token: string) => {
-    updateOrder({ _id: orderId, status: "payment_confirmed" }, token)
-    setOrderNumber(orderId);
-    if (isCartPurchase && clearCart) {
-      clearCart();
+  const handleSubmitAddress = async () => {
+    const { name, street, city, state, zipCode, country, phone, email } = address;
+    if (!name || !street || !city || !state || !zipCode || !country || !phone || !email) {
+        handleAlert({ isError: true, message: "Please fill all address fields." });
+        return;
     }
-    setOrderCompleted(true);
-    setStep(3);
-    setLoading(false);
-  };
 
-  const handlePayWithPrivyWallet = async () => {
-    if (!privyWallets || privyWallets?.length === 0) {
-      handleAlert({ isError: true, message: "No Privy wallets available." });
-      return;
+    if (saveAddress) {
+        const isNewAddress = !userData.addresses.some(a => a.name === address.name);
+        if (isNewAddress) {
+            try {
+                const updatedUser = await updateUser({ addresses: [...userData.addresses, address] }, userData._id?.toString() || "", await getAccessToken() || "");
+                setUserData(updatedUser); // Update user context
+            } catch (error) {
+                console.error("Failed to save new address:", error);
+                handleAlert({ isError: true, message: "Could not save new address. Please try again." });
+                return; // Stop if saving address fails
+            }
+        }
     }
+    setStep(2);
+  }
+
+  const buildTransactionInstructions = (payer: PublicKey): TransactionInstruction[] => {
+    const solPrice = listCryptoCurrencies.find(c => c.symbol === "SOL")?.price || 1;
+    const objectPayments = items.reduce((acc, item) => {
+        const priceInDollars = (listCryptoCurrencies.find(c => c.symbol === item.currency)?.price || 1) * item.price;
+        const totalAmount = priceInDollars * (1 - (item.offerPercentage || 0) / 100) * item.quantity;
+        acc[item.addressWallet] = (acc[item.addressWallet] || 0) + totalAmount;
+        return acc;
+    }, {} as { [key: string]: number });
+
+    return Object.entries(objectPayments).map(([recipient, amount]) => {
+        const lamports = Math.round((amount / solPrice) * LAMPORTS_PER_SOL);
+        return SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(recipient), lamports });
+    });
+  }
+
+  const handlePayWithPrivy = async () => {
+    setLoading(true);
+    const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+    if (!privyWallet) {
+        handleAlert({ isError: true, message: "Privy wallet not found." });
+        setLoading(false);
+        return;
+    }
+
     try {
-      setLoading(true);
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-      const balance = await connection.getBalance(new PublicKey(privyWallets[0].address));
-      setPrivyWalletBalance(balance / LAMPORTS_PER_SOL);
-      setIsPrivyConfirmationModalVisible(true);
+        const token = await getAccessToken();
+        if (!token) throw new Error("Authentication failed.");
+
+        const orderPayload: NewOrderPayload = {
+            buyer: { walletAddress: privyWallet.address, _id: user?.id, address },
+            status: "payment_pending", date: new Date(),
+            sellers: [...new Set(items.map(item => item.seller))],
+            items: items
+        };
+        const orderId = await createPendingOrder(orderPayload, token);
+        if (!orderId) throw new Error("Failed to create pending order.");
+
+        const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+        const { value: latestBlockhash } = await connection.getLatestBlockhashAndContext();
+        const instructions = buildTransactionInstructions(new PublicKey(privyWallet.address));
+        const txMessage = new TransactionMessage({ payerKey: new PublicKey(privyWallet.address), recentBlockhash: latestBlockhash.blockhash, instructions }).compileToV0Message();
+        const transaction = new VersionedTransaction(txMessage);
+        
+        const provider = await privyWallet.getProvider();
+        const { signature } = await provider.request({
+            method: 'signAndSendTransaction',
+            params: { transaction, connection },
+        });
+
+        await CheckoutComplete({ orderId, signature, items, buyer: orderPayload.buyer }, token);
+
+        setOrderNumber(orderId);
+        if (clearCart) clearCart();
+        setOrderCompleted(true);
+        setStep(3);
+
     } catch (error) {
-      console.error("Error fetching Privy wallet balance:", error);
-      handleAlert({ isError: true, message: "Could not fetch wallet balance." });
+        console.error("Privy Payment Error:", error);
+        handleAlert({ isError: true, message: "Payment failed. Please try again." });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
-  const confirmPayWithPrivyWallet = async () => {
-    setIsPrivyConfirmationModalVisible(false);
+  const handlePayWithMWA = async () => {
     setLoading(true);
     try {
-      const token = await getAccessToken();
-      if (!token) throw new Error("Failed to get access token.");
-      if (!privyWallets || privyWallets?.length === 0) {
-        throw new Error("No Privy wallets available.");
-      }
-      const selectedWallet = privyWallets[0];
+        const token = await getAccessToken();
+        if (!token) throw new Error("Authentication failed.");
 
-      const provider = await selectedWallet.getProvider();
-      if (!provider) {
-        throw new Error("No Privy wallet provider available.");
-      }
+        const orderPayload: NewOrderPayload = {
+            buyer: { walletAddress: '*', _id: user?.id, address },
+            status: "payment_pending", date: new Date(),
+            sellers: [...new Set(items.map(item => item.seller))],
+            items: items
+        };
+        const orderId = await createPendingOrder(orderPayload, token);
 
-      const orderId = await uploadOrder({
-        date: new Date(),
-        buyer: { walletAddress: selectedWallet.address, _id: user?.id },
-        decryptedAddress: address,
-        status: "payment_pending",
-        items: items,
-        sellers: [...new Set(items.map((item) => item.seller))],
-      }, token);
+        const { signature, walletAddress } = await transact(async (wallet) => {
+            const authResult = await wallet.authorize({ chain: 'solana:devnet', identity: { name: 'Going' } });
+            const payer = new PublicKey(toByteArray(authResult.accounts[0].address));
+            
+            const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+            const { value: latestBlockhash } = await connection.getLatestBlockhashAndContext();
+            const instructions = buildTransactionInstructions(payer);
+            const txMessage = new TransactionMessage({ payerKey: payer, recentBlockhash: latestBlockhash.blockhash, instructions }).compileToV0Message();
+            const transaction = new VersionedTransaction(txMessage);
 
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-      const {
-        value: latestBlockhash
-      } = await connection.getLatestBlockhashAndContext();
-      
-      const solPrice = listCryptoCurrencies.find(c => c.symbol === "SOL")?.price || 1;
-      const objectPayments = items
-        .filter(item => item.addressWallet)
-        .reduce((acc, item) => {
-          const priceInDollars = (listCryptoCurrencies.find(c => c.symbol === item.currency)?.price || 1) * item.price;
-          const totalAmount = priceInDollars * (1 - (item.offerPercentage || 0) / 100) * item.quantity;
-          const recipient = item.addressWallet;
-          acc[recipient] = (acc[recipient] || 0) + totalAmount;
-          return acc;
-        }, {} as { [key: string]: number });
+            const signedTransactions = await wallet.signAndSendTransactions({ transactions: [transaction] });
 
-      if (Object.keys(objectPayments).length === 0) {
-        throw new Error("Transaction has no instructions. Check if items have seller wallets.");
-      }
-
-      const instructions: TransactionInstruction[] = Object.entries(objectPayments).map(([recipient, amount]) => {
-        const lamports = Math.round((amount / solPrice) * LAMPORTS_PER_SOL);
-        return SystemProgram.transfer({
-          fromPubkey: new PublicKey(selectedWallet.address),
-          toPubkey: new PublicKey(recipient),
-          lamports,
+            return { signature: signedTransactions[0], walletAddress: payer.toBase58() };
         });
-      });
 
-      const txMessage = new TransactionMessage({
-        payerKey: new PublicKey(selectedWallet.address),
-        recentBlockhash: latestBlockhash.blockhash,
-        instructions,
-      }).compileToV0Message();
+        const finalBuyerPayload = { ...orderPayload.buyer, walletAddress };
 
-      const transferTx = new VersionedTransaction(txMessage);
+        await CheckoutComplete({ orderId, signature, items, buyer: finalBuyerPayload }, token);
 
-      const { signature: txSignature } = await provider.request({
-        method: 'signAndSendTransaction',
-        params: {
-          transaction: transferTx,
-          connection,
-        },
-      });
+        setOrderNumber(orderId);
+        if (clearCart) clearCart();
+        setOrderCompleted(true);
+        setStep(3);
 
-      const confirmTransaction = await connection.confirmTransaction({
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        signature: txSignature,
-      });
-
-      if (!confirmTransaction.value.err) {
-        completeCheckout(txSignature, token);
-      } else {
-        await updateOrder({ _id: orderId, status: "payment_failed" }, token)
-        throw new Error("Transaction confirmation failed.");
-      }
-
-      return txSignature;
     } catch (error) {
-      console.error("Privy Wallet Error:", error);
-      handleAlert({ isError: true, message: "Failed to pay with Privy Wallet. Please try again." });
+        console.error("MWA Payment Error:", error);
+        handleAlert({ isError: true, message: "Payment failed. Please try again." });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  }
-
-
-  const payWithSolanaMobileWallet = async () => {
-    const token = await getAccessToken();
-    if (!token) throw new Error("Failed to get access token.");
-    let orderId: string | null = null; // Declare orderId here
-    try {
-      const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-
-      const {
-        context: { slot: minContextSlot },
-        value: latestBlockhash
-      } = await connection.getLatestBlockhashAndContext();
-
-      orderId = await uploadOrder({
-        date: new Date(),
-        decryptedAddress: address,
-        status: "payment_pending",
-        items: items,
-        sellers: [...new Set(items.map((item) => item.seller))],
-      }, token);
-
-      const txSignature = await transact(async (wallet) => {
-        // 1. Authorize first
-        const authorizationResult = await wallet.authorize({
-          chain: 'solana:devnet',
-          identity: { name: 'Going', uri: 'https://going.website/', icon: 'favicon.ico' },
-        });
-
-        const authorizedPubkey = new PublicKey(
-          toByteArray(authorizationResult.accounts[0].address)
-        );
-
-        // Update the order with the buyer's wallet address
-        await updateOrder({
-          _id: orderId,
-          buyer: { walletAddress: bs58.encode(Buffer.from(authorizationResult.accounts[0].address, 'base64')), _id: user?.id },
-        } as Order, token);
-
-        // 3. Build the transaction
-        const solPrice = listCryptoCurrencies.find(c => c.symbol === "SOL")?.price || 1;
-        const objectPayments = items
-          .filter(item => item.addressWallet)
-          .reduce((acc, item) => {
-            const priceInDollars = (listCryptoCurrencies.find(c => c.symbol === item.currency)?.price || 1) * item.price;
-            const totalAmount = priceInDollars * (1 - (item.offerPercentage || 0) / 100) * item.quantity;
-            const recipient = item.addressWallet;
-            acc[recipient] = (acc[recipient] || 0) + totalAmount;
-            return acc;
-          }, {} as { [key: string]: number });
-
-        if (Object.keys(objectPayments).length === 0) {
-          throw new Error("Transaction has no instructions. Check if items have seller wallets.");
-        }
-
-        const instructions: TransactionInstruction[] = Object.entries(objectPayments).map(([recipient, amount]) => {
-          const lamports = Math.round((amount / solPrice) * LAMPORTS_PER_SOL);
-          return SystemProgram.transfer({
-            fromPubkey: authorizedPubkey,
-            toPubkey: new PublicKey(recipient),
-            lamports,
-          });
-        });
-
-
-        const txMessage = new TransactionMessage({
-          payerKey: authorizedPubkey, // Use the correctly decoded PublicKey
-          recentBlockhash: latestBlockhash.blockhash,
-          instructions,
-        }).compileToV0Message();
-
-        const transferTx = new VersionedTransaction(txMessage);
-
-        // 4. Sign and send
-        const transactionSignatures = await wallet.signAndSendTransactions({
-          transactions: [transferTx],
-          minContextSlot
-        });
-
-        return transactionSignatures[0];
-      });
-
-      // 5. Confirm the transaction
-
-      const confirmTransaction = await connection.confirmTransaction({
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        signature: txSignature,
-      });
-      if (!confirmTransaction.value.err) {
-        completeCheckout(txSignature, token);
-      } else {
-        if (orderId) {
-          await updateOrder({ _id: orderId, status: "payment_failed" }, token)
-        }
-        throw new Error("Transaction confirmation failed.");
-      }
-    } catch (error) {
-      console.error("Solana Mobile Wallet Error:", error);
-      if (orderId) {
-        await updateOrder({ _id: orderId, status: "payment_failed" }, token)
-      }
-      throw new Error("Failed to pay with Solana Mobile Wallet. Please try again.");
-    }
-  }
-
-
+  };
 
   useEffect(() => {
     const total = items.reduce((sum, item) => {
@@ -340,33 +241,56 @@ const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items
       <AppPage className="flex-1 justify-center items-center p-5">
         <AntDesign name="checkcircleo" size={50} color="green" />
         <AppText type="title" className="my-5">Order Completed!</AppText>
-        <AppText>Thank you for your purchase. Your order {orderNumber} has been successfully processed.</AppText>
+        <AppText>Thank you for your purchase. Your order {orderNumber.slice(-6)} has been successfully processed.</AppText>
+        <TouchableOpacity onPress={() => router.push('/')} className="bg-primary p-3 rounded-lg mt-5"><AppText className="text-white font-bold">Back to Home</AppText></TouchableOpacity>
       </AppPage>
     );
   }
 
   return (
     <AppPage>
-      <ScrollView className="p-5">
-        {/* Progress Indicator */}
-        <View className="flex-row justify-around items-center mb-5">
-          <AppText className={step === 1 ? 'font-bold' : 'font-normal'}>1. Address</AppText>
-          <AppText className={step === 2 ? 'font-bold' : 'font-normal'}>2. Payment</AppText>
-          <AppText className={step === 3 ? 'font-bold' : 'font-normal'}>3. Confirmation</AppText>
+      <ScrollView contentContainerStyle={{padding: 20}}>
+        <View className="flex-row justify-around mb-5">
+          <AppText className={step === 1 ? 'font-bold text-primary' : 'text-gray-400'}>1. Address</AppText>
+          <AppText className={step === 2 ? 'font-bold text-primary' : 'text-gray-400'}>2. Payment</AppText>
+          <AppText className={step === 3 ? 'font-bold text-primary' : 'text-gray-400'}>3. Confirmation</AppText>
         </View>
 
         {step === 1 && (
           <View>
-            <AppText type="subtitle" className="mb-5">Shipping Address</AppText>
-            <TextInput placeholder="Full Name" onChangeText={(text) => handleAddressChange('fullName', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="Street" onChangeText={(text) => handleAddressChange('street', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="City" onChangeText={(text) => handleAddressChange('city', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="State" onChangeText={(text) => handleAddressChange('state', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="Zip Code" onChangeText={(text) => handleAddressChange('zipCode', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="Country" onChangeText={(text) => handleAddressChange('country', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="Phone" onChangeText={(text) => handleAddressChange('phone', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TextInput placeholder="Email" onChangeText={(text) => handleAddressChange('email', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
-            <TouchableOpacity onPress={handleSubmitAddress} className="bg-primary p-4 rounded-lg items-center mt-5">
+            <AppText type="subtitle" className="mb-4">Shipping Address</AppText>
+
+            {userData && userData.addresses && userData.addresses.length > 0 && (
+              <View className="border border-gray-300 rounded-md mb-4">
+                <Picker
+                  selectedValue={address}
+                  onValueChange={(itemValue) => itemValue && setAddress(itemValue)}
+                >
+                  <Picker.Item label="Select a saved address..." value={null} />
+                  {userData.addresses.map((addr, index) => (
+                    <Picker.Item key={index} label={addr.name} value={addr} />
+                  ))}
+                </Picker>
+              </View>
+            )}
+
+            <TextInput placeholder="Address Name (e.g. Home)" value={address.name} onChangeText={(text) => handleAddressChange('name', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="Street" value={address.street} onChangeText={(text) => handleAddressChange('street', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="City" value={address.city} onChangeText={(text) => handleAddressChange('city', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="State" value={address.state} onChangeText={(text) => handleAddressChange('state', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="Zip Code" value={address.zipCode} onChangeText={(text) => handleAddressChange('zipCode', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="Country" value={address.country} onChangeText={(text) => handleAddressChange('country', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="Phone" value={address.phone} onChangeText={(text) => handleAddressChange('phone', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            <TextInput placeholder="Email" value={address.email} onChangeText={(text) => handleAddressChange('email', text)} className="border border-gray-300 p-3 rounded-md mb-3" />
+            
+            <View className="flex-row items-center justify-between my-4">
+                <AppText>Save this address for future use?</AppText>
+                <Switch value={saveAddress} onValueChange={setSaveAddress} />
+            </View>
+
+            <AppText className="text-xs text-gray-500 text-center mb-4">For your security, this delivery address will be removed from the shipment record upon completion.</AppText>
+
+            <TouchableOpacity onPress={handleSubmitAddress} className="bg-primary p-4 rounded-lg items-center mt-4">
               <AppText className="text-white text-lg font-bold">Continue to Payment</AppText>
             </TouchableOpacity>
           </View>
@@ -374,72 +298,35 @@ const CheckoutUI = ({ items, clearCart, step, setStep, isCartPurchase }: { items
 
         {step === 2 && (
           <View>
-            <AppText type="subtitle" className="mb-5">Payment Method</AppText>
-
-            <AppText type="defaultSemiBold" className="my-2.5">Privy Wallets</AppText>
-            {/* {privyWallets?.map((wallet) => (
-              <TouchableOpacity key={wallet.address} onPress={() => payWithPrivyWallet()} className={`border border-gray-300 p-3 rounded-md mb-3 ${selectedWalletInfo?.address === wallet.address ? 'border-primary border-2' : ''}`}>
-                <AppText>Privy Wallet: {wallet.address.slice(0, 6)}...</AppText>
-              </TouchableOpacity>
-            ))} */}
-
-            <AppText type="defaultSemiBold" className="my-2.5">Solana Mobile Wallets</AppText>
-            {/* {accounts.length > 0 ? (
-              accounts.map((account) => (
-                <TouchableOpacity key={account.address} onPress={() => setSelectedWalletInfo({ address: account.address, type: 'mwa' })} className={`border border-gray-300 p-3 rounded-md mb-3 ${selectedWalletInfo?.address === account.address ? 'border-primary border-2' : ''}`}>
-                  <AppText>Solana Wallet: {account.address.slice(0, 6)}...</AppText>
-                </TouchableOpacity>
-              ))
-            ) : 
-            ( */}
-            <TouchableOpacity onPress={handlePayWithPrivyWallet} className="bg-primary p-4 rounded-lg items-center mt-5">
-              <AppText className="text-white text-lg font-bold">Pay with Privy Mobile Wallet</AppText>
+            <AppText type="subtitle" className="mb-4">Payment</AppText>
+            <View className="p-4 border border-gray-200 rounded-lg mb-5">
+                <AppText type="defaultSemiBold" className="mb-2">Order Summary</AppText>
+                {items.map(item => (
+                    <View key={item._id} className="flex-row justify-between py-1">
+                        <AppText className="text-gray-600">{item.name} x {item.quantity}</AppText>
+                        <AppText className="text-gray-800">{item.price.toFixed(2)} {item.currency}</AppText>
+                    </View>
+                ))}
+                <View className="flex-row justify-between pt-2 mt-2 border-t border-gray-200">
+                    <AppText type="defaultSemiBold">Total</AppText>
+                    <AppText type="defaultSemiBold">{totalPrice.toFixed(2)} {userCurrency.currency}</AppText>
+                </View>
+            </View>
+            
+            <TouchableOpacity onPress={handlePayWithPrivy} disabled={loading} className={`bg-blue-500 p-4 rounded-lg items-center mb-3 ${loading && 'opacity-50'}`}>
+              {loading ? <ActivityIndicator color="white" /> : <AppText className="text-white font-bold">Pay with Privy Wallet</AppText>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => payWithSolanaMobileWallet()} className="bg-primary p-4 rounded-lg items-center mt-5">
-              <AppText className="text-white text-lg font-bold">Pay with Solana Mobile Wallet {totalPrice.toFixed(2)} {userCurrency.currency}</AppText>
-            </TouchableOpacity>
-            {/* )} */}
 
-            {/* <TouchableOpacity onPress={handleSubmitPayment} disabled={loading || !selectedWalletInfo} className="bg-primary p-4 rounded-lg items-center mt-5">
-              {loading ? <ActivityIndicator color="white" /> : <AppText className="text-white text-lg font-bold">Pay {totalPrice.toFixed(2)} {userCurrency.currency}</AppText>}
-            </TouchableOpacity> */}
+            <TouchableOpacity onPress={handlePayWithMWA} disabled={loading} className={`bg-purple-600 p-4 rounded-lg items-center ${loading && 'opacity-50'}`}>
+              {loading ? <ActivityIndicator color="white" /> : <AppText className="text-white font-bold">Pay with External Wallet</AppText>}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setStep(1)} disabled={loading} className={`bg-gray-500 p-4 rounded-lg items-center mt-5 ${loading && 'opacity-50'}`}>
+              <AppText className="text-white font-bold">Back to Address</AppText>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isPrivyConfirmationModalVisible}
-        onRequestClose={() => {
-          setIsPrivyConfirmationModalVisible(!isPrivyConfirmationModalVisible);
-        }}
-      >
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-5 rounded-lg w-11/12 items-center">
-            <AppText type="subtitle" className="mb-4">Confirm Payment</AppText>
-            <AppText className="mb-2">You are about to pay with your Privy wallet.</AppText>
-            {privyWalletBalance !== null ? (
-              <AppText className="mb-4">Your balance: {privyWalletBalance.toFixed(4)} SOL</AppText>
-            ) : <ActivityIndicator className="my-2" />}
-            <AppText className="mb-4 font-bold">Total: {totalPrice.toFixed(2)} {userCurrency.currency}</AppText>
-            <View className="flex-row justify-around w-full mt-4">
-              <TouchableOpacity
-                onPress={() => setIsPrivyConfirmationModalVisible(false)}
-                className="bg-red-500 p-3 rounded-lg"
-              >
-                <AppText className="text-white font-bold">Cancel</AppText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmPayWithPrivyWallet}
-                className="bg-green-500 p-3 rounded-lg"
-                disabled={loading}
-              >
-                {loading ? <ActivityIndicator color="white" /> : <AppText className="text-white font-bold">Confirm and Pay</AppText>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </AppPage>
   );
 };
